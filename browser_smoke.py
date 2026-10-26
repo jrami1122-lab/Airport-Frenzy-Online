@@ -33,6 +33,11 @@ async def main():
                     script_diagnostic=await page.evaluate("""() => {let e=document.querySelector('#af-online-v12'),s=e?.textContent||'';let pos=s.indexOf('#afGameJump');return {len:s.length,preview:s.slice(Math.max(0,pos-120),pos+210),begin:s.slice(0,150),end:s.slice(-150),hasApi:!!window.__AF_ONLINE};}""")
                     print("DEBUG online inline script:",script_diagnostic,flush=True)
                     print("DEBUG original marshal count:",await page.locator("#startMarshal").count(),flush=True)
+                    print("DEBUG external script links:",await page.locator("script[src]").evaluate_all("(x)=>x.map(e=>e.src)"),flush=True)
+                    r=await page.request.get(BASE+"/online_party.js?v=13")
+                    payload=await r.text()
+                    print("DEBUG party fetch:",r.status,len(payload),repr(payload[-100:]),flush=True)
+                    print("DEBUG front DOM:",await page.locator("#afFront .afMainButtons").inner_html(),flush=True)
                     print("DEBUG game mount:",(await page.locator("#afGameMount").inner_html())[:1200],flush=True)
                 assert game_count>=6, "Lost one of six games: "+str(game_count)
                 assert await page.locator("#startMarshal").count()==1,"Missing Air Marshalling"
