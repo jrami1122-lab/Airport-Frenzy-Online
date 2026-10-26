@@ -42,5 +42,7 @@ html=html.replace("MOBILE FIXED v3","ONLINE CREWS v1.3",1)
 required=['id="partyPlay"','id="gameSelect"','id="afLobbyLaunch"','id="startMarshal"',"lobbyScript.src='/online_party.js?v=14'"]
 if any(needle not in html for needle in required):
     raise RuntimeError("Home mode / online game menu injection failed")
+from game_balance import patch as balance_games
+html=balance_games(html)
 (ROOT/"index.html").write_text(html,encoding="utf-8")
-print(f"Assembled Airport Frenzy Online v1.4 with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
+print(f"Assembled Airport Frenzy Online v1.5 / gameplay rebalance with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
