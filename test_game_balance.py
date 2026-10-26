@@ -1,5 +1,5 @@
 """Game-specific validation with a real Chromium iframe and all six launch buttons."""
-import asyncio,base64,re
+import asyncio,base64,re,math
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -44,6 +44,25 @@ async def main():
    await page.keyboard.press("ArrowLeft")
    hint=await frame.locator("#signalHint").inner_text()
    assert "CUT ENGINE" in hint, "Down+inward must register CUT ENGINE: "+hint
+   # Drag the visible handles to the actual arm angles; test mouse gameplay,
+   # not just keyboard shortcuts.
+   person_box=await frame.locator("#person").bounding_box()
+   assert person_box,"Marshal worker not visible"
+   for side,angle,offset in (("l",85,90),("r",-145,168)):
+    handle=frame.locator("#leftHandle" if side=="l" else "#rightHandle")
+    handle_box=await handle.bounding_box()
+    assert handle_box,"Missing mouse/touch handle "+side
+    sx=handle_box["x"]+handle_box["width"]/2
+    sy=handle_box["y"]+handle_box["height"]/2
+    tx=person_box["x"]+offset+112*math.cos(math.radians(angle))
+    ty=person_box["y"]+104+112*math.sin(math.radians(angle))
+    await page.mouse.move(sx,sy)
+    await page.mouse.down()
+    await page.mouse.move(tx,ty,steps=13)
+    await page.mouse.up()
+   drag_hint=await frame.locator("#signalHint").inner_text()
+   assert "CUT ENGINE" in drag_hint,"Mouse-dragged cut-engine pose is unrecognized: "+drag_hint
+
    await page.keyboard.press("w")
    await page.keyboard.press("ArrowUp")
    hint=await frame.locator("#signalHint").inner_text()
