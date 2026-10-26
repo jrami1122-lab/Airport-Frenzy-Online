@@ -47,5 +47,7 @@ if any(needle not in html for needle in required):
     raise RuntimeError("Home mode / online game menu injection failed")
 from game_balance import patch as balance_games
 html=balance_games(html)
+from audio_event_patch import patch as add_game_audio
+html=add_game_audio(html)
 (ROOT/"index.html").write_text(html,encoding="utf-8")
 print(f"Assembled Airport Frenzy Online v1.5 / gameplay rebalance with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
