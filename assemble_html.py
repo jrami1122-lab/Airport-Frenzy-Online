@@ -29,6 +29,9 @@ const lobbyScript=document.createElement('script');
 lobbyScript.src='/online_party.js?v=balance16';
 lobbyScript.async=false;
 document.body.append(lobbyScript);
+const soundScript=document.createElement('script');
+soundScript.src='/audio_manager.js?v=sound17';soundScript.async=false;
+document.body.append(soundScript);
 """
 html=html.replace(front_anchor,boot,1)
 html=html.replace(external,'<!-- online menu dynamically loaded by front bootstrap -->',1)
