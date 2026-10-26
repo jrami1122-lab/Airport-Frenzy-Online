@@ -25,7 +25,12 @@ async def main():
                     box=await el.bounding_box()
                     assert box and box["x"]>=-1 and box["x"]+box["width"]<=width+1 and box["y"]>=-1 and box["y"]+box["height"]<=height+1, f"{sel} off-screen: {box} on {width}x{height}"
                 await page.locator("#gameSelect").click()
-                assert await page.locator("#afGames .gameChoice").count()>=6, "Lost one of six games"
+                game_count=await page.locator("#afGames .gameChoice").count()
+                if game_count<6:
+                    print("DEBUG game_count:",game_count,flush=True)
+                    print("DEBUG game headings:",await page.locator(".gameChoice h2").all_inner_texts(),flush=True)
+                    print("DEBUG game mount:",(await page.locator("#afGameMount").inner_html())[:1200],flush=True)
+                assert game_count>=6, "Lost one of six games: "+str(game_count)
                 assert await page.locator("#startMarshal").count()==1,"Missing Air Marshalling"
                 await page.screenshot(path=str(OUT/f"menu-{width}.png"))
                 await page.close()
