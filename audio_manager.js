@@ -30,6 +30,38 @@ document.addEventListener('click',e=>{const b=e.target.closest?.('button');if(!b
  if(starts[b.id]){game(starts[b.id]);effect('ding',{gain:.35,cooldown:300});}
  else if(['rampMain','bagMenu','cabinMenu','assistMenu','docMenu','afLeave','mainMenu'].includes(b.id))game('menu');
 },true);
+// Bag Stacker: physical baggage placement deserves a short soft thunk.
+document.addEventListener('pointerup',e=>{
+ if(mode==='bags'&&e.target.closest?.('#bagCanvas,#bagGame canvas'))effect('bag',{gain:.5,cooldown:250});
+},true);
+// Track genuine positive/negative score changes in the embedded airport jobs.
+// Sound comes from changes to game state, not every tap on the UI.
+const watched=new WeakSet(),scoreHistory=new WeakMap();
+function monitorScore(doc,g){
+ if(!doc||watched.has(doc))return;watched.add(doc);
+ const score=doc.getElementById('score');
+ if(!score)return;
+ let lastNumber=null;
+ const scan=()=>{
+  if(mode!==g)return;
+  const n=Number((score.textContent||'').replace(/[^0-9.-]/g,''));
+  if(!Number.isFinite(n))return;
+  if(lastNumber!==null&&n!==lastNumber){
+   if(n>lastNumber)effect('ding',{gain:.45,cooldown:600});
+   else if(n<lastNumber)effect('wrong',{gain:.35,cooldown:750});
+  }lastNumber=n;
+ };
+ const watcher=new MutationObserver(scan);watcher.observe(score,{subtree:true,characterData:true,childList:true});scan();
+}
+const frames={cabin:'cabinFrame',assist:'assistFrame',docs:'docFrame',marshal:'airFrame'};
+function watchFrames(){
+ for(const [g,id] of Object.entries(frames)){
+  const frame=document.getElementById(id);if(!frame)continue;
+  try{monitorScore(frame.contentDocument,g)}catch(e){}
+  if(!frame.dataset.afSoundWatch){frame.dataset.afSoundWatch='1';frame.addEventListener('load',()=>{try{monitorScore(frame.contentDocument,g)}catch(e){}})}
+ }
+}
+setInterval(watchFrames,1300);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){current?.pause();engine?.pause()}
  else if(enabled&&unlocked){tryPlay(current);tryPlay(engine)}});
 function setEnabled(v){enabled=!!v;if(!enabled){current?.pause();motor(false)}
