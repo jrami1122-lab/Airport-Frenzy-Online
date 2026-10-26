@@ -37,18 +37,9 @@ async def main():
    assert "(double tap for double signal)" == (await frame.locator("#submitHelp").inner_text()).strip()
    assert await frame.locator("#submit").is_visible()
    assert await frame.locator("#score").count()==1
-   await frame.locator("#begin").click()
-   # Directly stage deterministic memory prompts so checks don't depend on a random
-   # demo sequence. Real keyboard/pointer events still exercise the game's input.
+   # Stage known prompts on localhost only; production keeps them hidden.
    async def setup(cmd):
-    await frame.locator("body").evaluate("""(el,id)=>{
-      clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;
-      running=true;paused=false;demoing=false;sequence=[commands.find(c=>c.id===id)];
-      playerIndex=0;round=1;points=0;scorePill.querySelector('#score').textContent='0';
-      $('#start').classList.add('hidden');$('#over').classList.add('hidden');
-      submit.disabled=false;step.textContent='YOUR TURN';message.textContent='READY';
-      resetPose();
-    }""",cmd)
+    await frame.locator("body").evaluate("(el,id)=>window.__AF_MARSHAL_TEST.setup(id)",cmd)
    async def keys(*args):
     for key in args:await page.keyboard.press(key)
    async def submit():
@@ -70,18 +61,7 @@ async def main():
    assert "100" in await frame.locator("#score").inner_text()
 
    # Test every wand-position guide against the authoritative command list.
-   actual=await frame.locator("body").evaluate("""()=>{
-      const result={};
-      for(const side of ['l','r']){
-        for(const pos of ['up','down','out','inner','front']){
-          setPose(side,pos);
-          const label=armChecks[side].textContent;
-          const options=commands.filter(c=>c[side]===pos);
-          result[side+'_'+pos]={label,names:options.map(c=>c.name),
-            doubles:options.filter(c=>c.taps===2).map(c=>c.name)};
-        }
-      }return result;
-   }""")
+   actual=await frame.locator("body").evaluate("(el)=>window.__AF_MARSHAL_TEST.armMap()")
    for detail in actual.values():
     for name in detail["names"]:assert name in detail["label"],"Missing signal "+name+": "+detail["label"]
     for name in detail["doubles"]:assert name+" (DOUBLE)" in detail["label"],"Missing double mark: "+detail["label"]
