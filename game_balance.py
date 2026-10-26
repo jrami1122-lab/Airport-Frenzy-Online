@@ -108,7 +108,7 @@ function armOptions(side){
  c.name+(c.taps===2?' (DOUBLE)':'')+(c.circle?' (CIRCLE '+c.circle.toUpperCase()+')':''));
 }
 function armLabel(side){return (side==='l'?'LEFT':'RIGHT')+' — '+armOptions(side).join(' · ')}
-let pendingSignalTimer=null,pendingSignature=null;
+let pendingSignalTimer=null,pendingSignature=null,nextRoundTimer=null;
 function signalSignature(){return zones.l+'|'+zones.r+'|'+!!circleReady.r+'|'+!!circleReady.l}
 function resolveSubmission(taps){
  clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;tapCount=0;
@@ -124,7 +124,7 @@ function resolveSubmission(taps){
  if(playerIndex===sequence.length){
   round++;best=Math.max(best,sequence.length);
   localStorage.airMarshallBest=best;bestEl.textContent='BEST '+best;
-  step.textContent='SEQUENCE CLEAR';setTimeout(nextRound,850)
+  step.textContent='SEQUENCE CLEAR';nextRoundTimer=setTimeout(nextRound,850)
  }else step.textContent='YOUR TURN · '+(playerIndex+1)+'/'+sequence.length;
 }""","no combined signal readout and Simon submission evaluation")
     # Generate each guide directly from the authoritative commands: no stale
@@ -147,7 +147,7 @@ function resolveSubmission(taps){
       "no correct-answer spoiler after fail")
     s=replace_one(s,
       "function begin(){sequence=[];round=1;playerIndex=0;running=true;",
-      "function begin(){clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;sequence=[];round=1;playerIndex=0;running=true;",
+      "function begin(){clearTimeout(nextRoundTimer);clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;sequence=[];round=1;playerIndex=0;running=true;",
       "clear pending submit on restart")
     s=replace_one(s,
       "function resetPose(){lastReady.l=lastReady.r=false;",
@@ -203,8 +203,34 @@ function resolveSubmission(taps){
         "h.onpointerup=h.onpointercancel=v=>{move(v);",
         "h.onpointerup=h.onpointercancel=v=>{const box=person.getBoundingClientRect(),sx=box.left+(side==='l'?90:168),sy=box.top+104;move(v);",
         "fix Air Marshalling undefined pointerup shoulder coordinates")
+    # Test-only hooks are available solely when served from localhost;
+    # production players never receive a selectable correct answer.
     s=replace_one(s,"addEventListener('resize',resetPose);resetPose();",
-    "addEventListener('resize',resetPose);resetPose();","no center hint initialization")
+    """if(parent.location.hostname==='127.0.0.1'||parent.location.hostname==='localhost'){
+ window.__AF_MARSHAL_TEST={
+  setup(id){
+   clearTimeout(nextRoundTimer);clearTimeout(pendingSignalTimer);pendingSignalTimer=null;
+   pendingSignature=null;const c=commands.find(c=>c.id===id);
+   if(!c)throw Error('Invalid test signal');
+   sequence=[c];playerIndex=0;round=1;points=0;
+   scorePill.querySelector('#score').textContent='0';
+   running=true;paused=false;demoing=false;submit.disabled=false;
+   $('#start').classList.add('hidden');$('#over').classList.add('hidden');
+   step.textContent='YOUR TURN';message.textContent='READY';resetPose();
+  },
+  armMap(){
+   const result={};
+   for(const side of ['l','r'])for(const pos of ['up','down','out','inner','front']){
+    setPose(side,pos);const list=commands.filter(c=>c[side]===pos);
+    result[side+'_'+pos]={label:armChecks[side].textContent,
+     names:list.map(c=>c.name),doubles:list.filter(c=>c.taps===2).map(c=>c.name)};
+   }
+   return result;
+  }
+ };
+}
+addEventListener('resize',resetPose);resetPose();""",
+    "local-only deterministic Air Marshalling test harness")
     return s
 
 def patch(html):
