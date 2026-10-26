@@ -62,16 +62,24 @@ async def main():
             await host.locator("#afSingle").click()
             await host.locator("#afGameSelect").select_option("bags")
             await host.locator("#afStart").click()
-            await host.locator("#afPlay").wait_for(timeout=15000)
-            await guest.locator("#afPlay").wait_for(timeout=15000)
-            await host.locator("#afPlay").click()
-            await guest.locator("#afPlay").click()
+            await host.locator("#afSyncCountdown").wait_for(timeout=15000)
+            await guest.locator("#afSyncCountdown").wait_for(timeout=15000)
+            # Neither player clicks Play; server launches the same game automatically.
+            await host.wait_for_function("window.__AF_ONLINE?.getState().playing===true",timeout=15000)
+            await guest.wait_for_function("window.__AF_ONLINE?.getState().playing===true",timeout=15000)
+            host_info=await host.evaluate("window.__AF_ONLINE.getState()")
+            guest_info=await guest.evaluate("window.__AF_ONLINE.getState()")
+            assert host_info["room"]["startAt"]==guest_info["room"]["startAt"],"Devices used different clocks"
+            assert host_info["room"]["roundId"]==guest_info["room"]["roundId"],"Devices joined different games"
+            assert host_info["room"]["game"]==guest_info["room"]["game"]=="bags"
+            await host.locator("#afRivals .rival").first.wait_for(timeout=6000)
+            await guest.locator("#afRivals .rival").first.wait_for(timeout=6000)
             assert await host.locator("#afRivals .rival").count()==1,"No opponent PiP"
             assert await guest.locator("#afRivals .rival").count()==1,"Guest PiP missing"
             assert await host.locator("#startBagVersus").evaluate("(b)=>getComputedStyle(b).pointerEvents")=="none","Online split screen not disabled"
             await host.screenshot(path=str(OUT/"bag-desktop.png"))
             await guest.screenshot(path=str(OUT/"bag-mobile.png"))
-            print("PASS: desktop/mobile/landscape menus, six games, online room, Casual Mode, Bag Stacker and opponent panel.")
+            print("PASS: desktop/mobile/landscape menus, six games, both clients auto-start Bag Stacker at one timestamp, and opponent panel.")
             await host.close()
             await guest.close()
         finally:
