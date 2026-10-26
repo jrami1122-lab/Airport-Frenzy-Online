@@ -76,6 +76,12 @@ async def main():
             await guest.locator("#afRivals .rival").first.wait_for(timeout=6000)
             assert await host.locator("#afRivals .rival").count()==1,"No opponent PiP"
             assert await guest.locator("#afRivals .rival").count()==1,"Guest PiP missing"
+            assert await host.locator("#bagGame").is_visible(),"Host game canvas isn't visible"
+            assert await guest.locator("#bagGame").is_visible(),"Guest game canvas isn't visible"
+            await host.locator("#afRivals .rival img").first.wait_for(timeout=12000)
+            await guest.locator("#afRivals .rival img").first.wait_for(timeout=12000)
+            assert await host.locator("#afRivals .rival img").count()==1, "Host has no real opponent frame"
+            assert await guest.locator("#afRivals .rival img").count()==1, "Guest has no real opponent frame"
             assert await host.locator("#startBagVersus").evaluate("(b)=>getComputedStyle(b).pointerEvents")=="none","Online split screen not disabled"
             await host.screenshot(path=str(OUT/"bag-desktop.png"))
             await guest.screenshot(path=str(OUT/"bag-mobile.png"))
