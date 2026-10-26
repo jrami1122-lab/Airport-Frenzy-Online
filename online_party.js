@@ -43,18 +43,50 @@ const css=document.createElement('style');css.textContent=[
 #afGameJump button:focus-visible{outline:3px solid #f6d46d;outline-offset:2px;}
 #afGameMount .afGameSpotlight{outline:3px solid #ffd34e;outline-offset:-4px;}
 @media(max-width:370px){#afGameJump{gap:4px}#afGameJump button span{font-size:10px}}
+`;css.textContent+=`
+/* Three primary home actions, fully reachable on short/mobile viewports. */
+#afFront .afMainButtons{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;max-height:min(60dvh,420px);overflow-y:auto;overscroll-behavior:contain;}
+#afFront .afMainButtons button{min-height:clamp(59px,10dvh,76px);font-size:clamp(17px,3.5vw,25px);margin:0!important;}
+#afFront #afLobbyLaunch{border-left-color:#59e6d6!important;background:linear-gradient(100deg,#0f4751d9,#0b2a41d9)!important;}
+#afFront .afHome{bottom:max(14px,env(safe-area-inset-bottom))!important;}
+#afFront .afHome .afKicker{margin:5px 0 10px!important;}
+#afFront .afOnline{font-size:11px!important;margin-top:9px!important;}
+@media(max-height:600px){#afFront .afHome{bottom:4px!important;}#afFront .afKicker{display:none!important;}#afFront .afMainButtons{max-height:min(60dvh,250px)}#afFront .afMainButtons button{min-height:54px!important;padding:7px 48px 7px 12px!important;}}
+#afOnlineRoom .modeChoices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;}
+#afOnlineRoom .modeChoices button{min-height:86px;text-align:left;padding:14px;}
+#afOnlineRoom .modeChoices button strong,#afOnlineRoom .modeChoices button small{display:block;}
+#afOnlineRoom .modeChoices button small{font:500 11px/1.4 system-ui;color:#a9cbd2;margin-top:6px;}
+#afOnlineRoom .modeChoices .active{border-color:#ffcc64;background:#72542166;}
+#afRivals{position:fixed;z-index:420;right:max(5px,env(safe-area-inset-right));bottom:max(110px,env(safe-area-inset-bottom) + 95px);display:none;flex-direction:column;gap:5px;width:clamp(120px,17vw,190px);pointer-events:none;}
+#afRivals.visible{display:flex}
+#afRivals .rival{border:2px solid var(--crew);border-radius:8px;overflow:hidden;background:#0b1e2af2;box-shadow:0 6px 15px #000a;min-height:65px}
+#afRivals .rival label{display:block;padding:4px 6px;font:700 11px system-ui;color:#eefbff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#afRivals .rival small{color:#ffde8d;float:right;}
+#afRivals .rival img{display:block;width:100%;height:clamp(48px,8vh,86px);object-fit:cover;background:#1d3441}
+#afRivals .noPreview{height:45px;display:flex;align-items:center;justify-content:center;font:600 11px system-ui;color:#9cb5c5}
+#afCrewDock.visible{max-width:min(185px,40vw);top:max(6px,env(safe-area-inset-top) + 6px);right:6px;padding:7px;font-size:11px;}
+#afCrewDock.visible button{font-size:10px;padding:5px 8px;margin-top:5px;}
+body.afNetworkRoom .afGames .versus,body.afNetworkRoom #startBagVersus,body.afNetworkRoom #startAssistVersus,body.afNetworkRoom #startVersus,body.afNetworkRoom #startDocsPass{filter:grayscale(1);opacity:.28!important;pointer-events:none!important;cursor:not-allowed!important;}
+@media(max-width:680px){#afRivals{width:104px;right:3px;bottom:max(95px,env(safe-area-inset-bottom) + 75px);gap:3px}#afRivals .rival img{height:44px}#afRivals .rival label{font-size:9px;padding:2px 4px}#afRivals .noPreview{height:22px;font-size:9px;}#afCrewDock.visible{max-width:168px;right:5px;top:5px;}#afOnlineRoom .modeChoices button{padding:9px;min-height:90px}}
+@media(max-height:410px){#afRivals{bottom:7px;width:100px}#afRivals .rival img{height:25px}#afRivals .noPreview{height:15px}}
 `;document.head.appendChild(css);
 const pane=document.createElement('div');pane.id='afOnlineRoom';pane.innerHTML='<div class="card"><div class="top"><h2>✈️ AIRPORT FRENZY ONLINE</h2><button id="afOnlineRoomClose">✕</button></div><div id="afOnlineRoomBody"></div><div id="afOnlineRoomErr"></div></div>';document.body.appendChild(pane);
 const dock=document.createElement('div');dock.id='afCrewDock';document.body.appendChild(dock);
+const rivals=document.createElement('aside');rivals.id='afRivals';rivals.setAttribute('aria-label','Live opponent game previews');document.body.appendChild(rivals);
+let previews={};
+
 // Reuse the existing prominent Party Play button: adding a third large
 // button made the new online mode invisible on short/mobile screens.
-const launch=$('#partyPlay')||document.createElement('button');
-const openLocalParty=launch.onclick;
-launch.id='afOnlineRoomOpen';
-launch.innerHTML='<small>2–4 PLAYERS · ONLINE ROOM</small>✈️ ONLINE PARTY PLAY <em>›</em>';
-if(!launch.isConnected)($('#afFront .afMainButtons')||$('#afFront .afHome')||$('#afFront')||document.body).prepend(launch);
-// Keep the original offline tournament reachable from the Online panel.
-function localParty(){hide();if(typeof openLocalParty==='function'){openLocalParty.call(launch)}else{$('#afGames')?.classList.add('active');}}
+// Three clear home choices: Party Mode, Casual Mode, Start a Lobby.
+const partyButton=$('#partyPlay');
+const casualButton=$('#gameSelect');
+if(partyButton)partyButton.innerHTML='<small>TOURNAMENT · ROTATING GAMES</small>🏆 PARTY MODE <em>›</em>';
+if(casualButton)casualButton.innerHTML='<small>CHOOSE ANY AIRPORT GAME</small>🎮 CASUAL MODE <em>›</em>';
+const launch=$('#afLobbyLaunch')||document.createElement('button');
+launch.id='afLobbyLaunch';
+launch.innerHTML='<small>HOST OR JOIN FRIENDS · 2–4 DEVICES</small>🌐 START A LOBBY <em>›</em>';
+if(!launch.isConnected)($('#afFront .afMainButtons')||$('#afFront .afHome')||$('#afFront')||document.body).appendChild(launch);
+function localParty(){hide();partyButton?.click()}
 // Every game must be discoverable immediately, even in a short mobile viewport.
 const mount=$('#afGameMount');
 if(mount&&!$('#afGameJump')){
