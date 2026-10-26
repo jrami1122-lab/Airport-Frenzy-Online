@@ -2,43 +2,71 @@
 const $=s=>document.querySelector(s),GAMES=[['ramp','Ramp Runner','🚜','#startSolo'],['bags','Bag Stacker','🧳','#startBagSolo'],['cabin','Flight Attendant','🛫','#startCabin'],['assist','Terminal Assist','♿','#startAssist'],['docs','Document Control','🛂','#startDocsSolo'],['marshal','Air Marshalling','🦺','#startMarshal']];
 const game=k=>GAMES.find(g=>g[0]===k)||GAMES[0],safe=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const css=document.createElement('style');css.textContent=[
-'#afPartyOpen{display:block;width:100%;min-height:59px;margin:8px 0;padding:12px;border:2px solid #55cddd;border-radius:14px;background:#134255;color:#e9fbff;font:bold 19px system-ui;cursor:pointer}',
-'#afPartyOpen small{display:block;font-size:10px;color:#b6e3ee;letter-spacing:.1em}',
-'#afParty{display:none;position:fixed;z-index:510;inset:0;justify-content:center;align-items:center;overflow:auto;padding:10px;background:#04111aed;backdrop-filter:blur(8px);touch-action:pan-y}',
-'#afParty.open{display:flex}',
-'#afParty .card{box-sizing:border-box;width:min(680px,100%);max-height:calc(100dvh - 20px);overflow-y:auto;touch-action:pan-y;padding:clamp(12px,3vw,22px);border:2px solid #7095a4;border-radius:17px;background:linear-gradient(145deg,#162c3b,#071723);color:#effaff;box-shadow:0 12px 50px #000e}',
-'#afParty h2{font:bold clamp(19px,4vw,27px) system-ui;color:#ffe4a3;margin:0}',
-'#afParty h3{font:bold 16px system-ui;color:#c9e9ee;margin:15px 0 9px}',
-'#afParty p{font:14px/1.45 system-ui;color:#c6d9df}',
-'#afParty button,#afParty input,#afParty select{box-sizing:border-box;min-height:42px;border:1px solid #678c99;border-radius:9px;padding:9px;font:600 15px system-ui}',
-'#afParty button{background:#205067;color:#f1ffff;cursor:pointer}',
-'#afParty button.primary{background:#ffd16c;color:#102230;font-weight:800}',
-'#afParty button:disabled{opacity:.4}',
-'#afParty input,#afParty select{background:#081927;color:#fff;width:100%;min-width:0}',
-'#afParty .row{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0;align-items:center}',
-'#afParty .row>*{flex:1 1 130px}',
-'#afParty .top{display:flex;align-items:center;justify-content:space-between;gap:8px}',
-'#afParty .top button{flex:0 0 auto}',
-'#afParty .roomcode{font:bold 25px ui-monospace,monospace;letter-spacing:.15em;color:#ffe0a3}',
-'#afParty .member{--pcolor:#4cd3ff;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px;margin:8px 0;background:#071722;border-left:6px solid var(--pcolor);border-radius:9px}',
-'#afParty .member b{font:700 14px system-ui}',
-'#afParty .member small{display:block;color:#9dc1cd;font:12px system-ui}',
-'#afParty .dot{width:14px;height:14px;background:var(--pcolor);border-radius:50%;display:inline-block;margin-right:6px}',
-'#afParty .score{font:bold 13px ui-monospace,monospace;color:#ffdf96;white-space:nowrap}',
-'#afParty .note{padding:10px;border:1px solid #345967;border-radius:8px;background:#133344;font:13px/1.5 system-ui;color:#e1eefa}',
-'#afPartyErr{font:12px system-ui;color:#ffc3b3;min-height:17px}',
+'#afOnlineRoomOpen{display:block;width:100%;min-height:59px;margin:8px 0;padding:12px;border:2px solid #55cddd;border-radius:14px;background:#134255;color:#e9fbff;font:bold 19px system-ui;cursor:pointer}',
+'#afOnlineRoomOpen small{display:block;font-size:10px;color:#b6e3ee;letter-spacing:.1em}',
+'#afOnlineRoom{display:none;position:fixed;z-index:510;inset:0;justify-content:center;align-items:center;overflow:auto;padding:10px;background:#04111aed;backdrop-filter:blur(8px);touch-action:pan-y}',
+'#afOnlineRoom.open{display:flex}',
+'#afOnlineRoom .card{box-sizing:border-box;width:min(680px,100%);max-height:calc(100dvh - 20px);overflow-y:auto;touch-action:pan-y;padding:clamp(12px,3vw,22px);border:2px solid #7095a4;border-radius:17px;background:linear-gradient(145deg,#162c3b,#071723);color:#effaff;box-shadow:0 12px 50px #000e}',
+'#afOnlineRoom h2{font:bold clamp(19px,4vw,27px) system-ui;color:#ffe4a3;margin:0}',
+'#afOnlineRoom h3{font:bold 16px system-ui;color:#c9e9ee;margin:15px 0 9px}',
+'#afOnlineRoom p{font:14px/1.45 system-ui;color:#c6d9df}',
+'#afOnlineRoom button,#afOnlineRoom input,#afOnlineRoom select{box-sizing:border-box;min-height:42px;border:1px solid #678c99;border-radius:9px;padding:9px;font:600 15px system-ui}',
+'#afOnlineRoom button{background:#205067;color:#f1ffff;cursor:pointer}',
+'#afOnlineRoom button.primary{background:#ffd16c;color:#102230;font-weight:800}',
+'#afOnlineRoom button:disabled{opacity:.4}',
+'#afOnlineRoom input,#afOnlineRoom select{background:#081927;color:#fff;width:100%;min-width:0}',
+'#afOnlineRoom .row{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0;align-items:center}',
+'#afOnlineRoom .row>*{flex:1 1 130px}',
+'#afOnlineRoom .top{display:flex;align-items:center;justify-content:space-between;gap:8px}',
+'#afOnlineRoom .top button{flex:0 0 auto}',
+'#afOnlineRoom .roomcode{font:bold 25px ui-monospace,monospace;letter-spacing:.15em;color:#ffe0a3}',
+'#afOnlineRoom .member{--pcolor:#4cd3ff;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px;margin:8px 0;background:#071722;border-left:6px solid var(--pcolor);border-radius:9px}',
+'#afOnlineRoom .member b{font:700 14px system-ui}',
+'#afOnlineRoom .member small{display:block;color:#9dc1cd;font:12px system-ui}',
+'#afOnlineRoom .dot{width:14px;height:14px;background:var(--pcolor);border-radius:50%;display:inline-block;margin-right:6px}',
+'#afOnlineRoom .score{font:bold 13px ui-monospace,monospace;color:#ffdf96;white-space:nowrap}',
+'#afOnlineRoom .note{padding:10px;border:1px solid #345967;border-radius:8px;background:#133344;font:13px/1.5 system-ui;color:#e1eefa}',
+'#afOnlineRoomErr{font:12px system-ui;color:#ffc3b3;min-height:17px}',
 '#afCrewDock{display:none;position:fixed;z-index:430;right:8px;top:max(56px,calc(env(safe-area-inset-top) + 55px));max-width:min(270px,75vw);border:2px solid var(--pcolor,#4cd3ff);border-radius:12px;background:#041928ed;color:#fff;padding:9px;box-shadow:0 8px 22px #000b;font:700 12px system-ui}',
 '#afCrewDock.visible{display:block}#afCrewDock button{padding:7px 13px;margin:7px 4px 0 0;background:#174e62;color:#fff;border:1px solid #75aab6;border-radius:7px;font:700 12px system-ui}#afCrewDock .finish{background:#d9a94e;color:#12202a}',
-'@media(max-width:400px){#afParty{padding:4px}#afParty .card{padding:10px;max-height:99dvh}#afParty .roomcode{font-size:19px}}'
-].join('\n');document.head.appendChild(css);
-const pane=document.createElement('div');pane.id='afParty';pane.innerHTML='<div class="card"><div class="top"><h2>✈️ AIRPORT FRENZY ONLINE</h2><button id="afPartyClose">✕</button></div><div id="afPartyBody"></div><div id="afPartyErr"></div></div>';document.body.appendChild(pane);
+'@media(max-width:400px){#afOnlineRoom{padding:4px}#afOnlineRoom .card{padding:10px;max-height:99dvh}#afOnlineRoom .roomcode{font-size:19px}}'
+].join('\n');css.textContent+=`
+/* Dedicated game selector: all six titles visible before any scrolling. */
+#afGameJump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px 5px 11px;position:sticky;top:0;z-index:20;background:#092235f0;border-bottom:1px solid #43869d;box-shadow:0 6px 17px #0008;}
+#afGameJump button{min-height:49px;min-width:0;padding:5px 3px;border:1px solid #49788d;border-radius:9px;background:#143449;color:#f5e8c5;font:700 12px/1.2 system-ui;overflow-wrap:anywhere;cursor:pointer;}
+#afGameJump button span{display:block;font-size:11px;margin-top:3px;color:#d3edfa;}
+#afGameJump button:focus-visible{outline:3px solid #f6d46d;outline-offset:2px;}
+#afGameMount .afGameSpotlight{outline:3px solid #ffd34e;outline-offset:-4px;}
+@media(max-width:370px){#afGameJump{gap:4px}#afGameJump button span{font-size:10px}}
+`;document.head.appendChild(css);
+const pane=document.createElement('div');pane.id='afOnlineRoom';pane.innerHTML='<div class="card"><div class="top"><h2>✈️ AIRPORT FRENZY ONLINE</h2><button id="afOnlineRoomClose">✕</button></div><div id="afOnlineRoomBody"></div><div id="afOnlineRoomErr"></div></div>';document.body.appendChild(pane);
 const dock=document.createElement('div');dock.id='afCrewDock';document.body.appendChild(dock);
-const launch=document.createElement('button');launch.id='afPartyOpen';launch.innerHTML='<small>2–4 PLAYERS · SEPARATE DEVICES</small>✈️ ONLINE PARTY PLAY';
-($('#afFront .afMainButtons')||$('#afFront .afHome')||$('#afFront')||document.body).appendChild(launch);
+// Reuse the existing prominent Party Play button: adding a third large
+// button made the new online mode invisible on short/mobile screens.
+const launch=$('#partyPlay')||document.createElement('button');
+const openLocalParty=launch.onclick;
+launch.id='afOnlineRoomOpen';
+launch.innerHTML='<small>2–4 PLAYERS · ONLINE ROOM</small>✈️ ONLINE PARTY PLAY <em>›</em>';
+if(!launch.isConnected)($('#afFront .afMainButtons')||$('#afFront .afHome')||$('#afFront')||document.body).prepend(launch);
+// Keep the original offline tournament reachable from the Online panel.
+function localParty(){hide();if(typeof openLocalParty==='function'){openLocalParty.call(launch)}else{$('#afGames')?.classList.add('active');}}
+// Every game must be discoverable immediately, even in a short mobile viewport.
+const mount=$('#afGameMount');
+if(mount&&!$('#afGameJump')){
+ const jump=document.createElement('nav');jump.id='afGameJump';
+ jump.setAttribute('aria-label','Choose one of six airport games');
+ jump.innerHTML=GAMES.map(g=>'<button type="button" data-af-jump="'+g[0]+'" aria-label="Go to '+g[1]+'">'+g[2]+' <span>'+g[1]+'</span></button>').join('');
+ mount.prepend(jump);
+ jump.querySelectorAll('button').forEach(btn=>btn.onclick=()=>{
+  const label=game(btn.dataset.afJump)[1];
+  const card=[...mount.querySelectorAll('.gameChoice')].find(el=>el.querySelector('h2')?.textContent.includes(label));
+  if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.classList.add('afGameSpotlight');setTimeout(()=>card.classList.remove('afGameSpotlight'),1100)}
+ });
+}
 let socket=null,room=null,identity=null,token=null,playing=false,localFinished=false,startAt=0,reconnect=null;
 let name=localStorage.getItem('afPlayerName')||'Player',lastCode='';
 const mine=()=>room?.players?.find(x=>x.id===identity),host=()=>room?.host===identity,remaining=()=>Math.max(0,Math.ceil((room?.deadline||0)-Date.now()/1000));
-function error(msg){$('#afPartyErr').textContent=msg}
+function error(msg){$('#afOnlineRoomErr').textContent=msg}
 function open(){pane.classList.add('open');render()}
 function hide(){pane.classList.remove('open')}
 function emit(o){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(o));else error('Connection unavailable')}
@@ -64,11 +92,12 @@ function connect(type,code='',reconnecting=false){
 const player=p=>'<div class="member" style="--pcolor:'+safe(p.color)+'"><div><span class="dot"></span><b>'+safe(p.name)+(p.id===room.host?' 👑':'')+(p.id===identity?' (you)':'')+'</b><small>'+(p.online?'Connected':'Offline')+(p.eliminated?' · Eliminated':'')+(p.finished?' · Finished':'')+'</small></div><div class="score">'+p.pts+' PTS</div></div>';
 function render(){
  if(!pane.classList.contains('open'))return;
- const body=$('#afPartyBody');if(!room){
+ const body=$('#afOnlineRoomBody');if(!room){
  const param=new URL(location.href).searchParams.get('room')||lastCode;
- body.innerHTML='<p>Create a private crew room or join a friend. Each player uses a separate device.</p><label>YOUR NAME<input id="afName" maxlength="20" value="'+safe(name)+'"></label><div class="row"><button class="primary" id="afCreate">CREATE ROOM</button></div><div class="row"><input id="afCodeInput" placeholder="Six-character code" maxlength="6" value="'+safe(param)+'"><button id="afJoin">JOIN ROOM</button></div><p class="note">Live scoring · 2–4 players · unique crew colors · six original arcade games</p>';
+ body.innerHTML='<p>Create a private crew room or join a friend. Each player uses a separate device.</p><label>YOUR NAME<input id="afName" maxlength="20" value="'+safe(name)+'"></label><div class="row"><button class="primary" id="afCreate">CREATE ROOM</button></div><div class="row"><input id="afCodeInput" placeholder="Six-character code" maxlength="6" value="'+safe(param)+'"><button id="afJoin">JOIN ROOM</button></div><p class="note">Live scoring · 2–4 players · unique crew colors · six original arcade games</p><div class="row"><button id="afOfflineParty">LOCAL PARTY PLAY (SAME DEVICE)</button></div>';
  $('#afCreate').onclick=()=>{name=$('#afName').value||'Player';localStorage.setItem('afPlayerName',name);connect('create')};
  $('#afJoin').onclick=()=>{name=$('#afName').value||'Player';localStorage.setItem('afPlayerName',name);const code=$('#afCodeInput').value.trim().toUpperCase();if(code.length!==6){error('Enter all six characters.');return}connect('join',code)};
+ $('#afOfflineParty').onclick=localParty;
  return;
  }
  const players=room.players.slice().sort((a,b)=>b.pts-a.pts);
@@ -143,7 +172,7 @@ function leave(){
  if(socket){socket.onclose=null;socket.close();socket=null}
  const u=new URL(location.href);u.searchParams.delete('room');history.replaceState(null,'',u);hide();dockView();
 }
-$('#afPartyClose').onclick=hide;launch.onclick=open;
+$('#afOnlineRoomClose').onclick=hide;launch.onclick=open;
 setInterval(()=>{if(room?.stage==='round'){if(playing&&!localFinished){emit({type:'score',score:measured()});dockView()}if($('#afTime'))$('#afTime').textContent=remaining();}},1000);
 window.__AF_ONLINE={open,getState:()=>({room,identity,playing,score:measured()})};
 const query=new URL(location.href).searchParams.get('room');if(query){open();try{const data=JSON.parse(sessionStorage.getItem('afOnlineSession')||'{}');if(data.code===query&&data.token){token=data.token;identity=data.id;name=data.name||name;connect('join',query,true)}}catch(e){}}
