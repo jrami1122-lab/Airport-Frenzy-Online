@@ -40,6 +40,8 @@ async def main():
    # Stage known prompts on localhost only; production keeps them hidden.
    async def setup(cmd):
     await frame.locator("body").evaluate("(el,id)=>window.__AF_MARSHAL_TEST.setup(id)",cmd)
+    # Route keyboard events into the game iframe rather than the parent arcade.
+    await frame.locator("#submit").focus()
    async def keys(*args):
     for key in args:await page.keyboard.press(key)
    async def submit():
