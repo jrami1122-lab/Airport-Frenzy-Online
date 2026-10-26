@@ -129,6 +129,9 @@ function connect(type,code='',reconnecting=false){
      // Server timestamps remove differing local phone/PC clock drift.
      if(typeof d.serverNow==='number')serverDelta=d.serverNow*1000-Date.now();
      room=d;lastCode=d.code;safeStore.set('sessionStorage','afOnlineSession',JSON.stringify({id:identity,token,code:d.code,name}));
+     // Keep a reloadable room URL for every host and guest, not just invitees.
+     try{const roomUrl=new URL(location.href);roomUrl.searchParams.set('room',d.code);
+         history.replaceState(null,'',roomUrl)}catch(e){}
      document.body.classList.toggle('afNetworkRoom',!!room);
      const changedRound=old&&old.roundId!==d.roundId;
      if(playing&&(changedRound||old?.game!==d.game||(old?.stage==='round'&&d.stage!=='round')))stopGame();
