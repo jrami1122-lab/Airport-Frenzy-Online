@@ -182,10 +182,54 @@ function measured(){
  return g==='marshal'?Math.max(0,num(doc.querySelector('#round')?.textContent)-1):num(doc.querySelector('#score')?.textContent);
  }catch(e){console.warn(e);return 0}
 }
+
+// Opponent previews show each player's actual game canvas (never their webcam).
+// The local game remains the large focus, with three compact color-coded views.
+function rivalsView(){
+ const on=!!room&&room.stage==='round'&&playing&&!localFinished;
+ rivals.classList.toggle('visible',on);
+ if(!on){rivals.textContent='';return;}
+ const others=room.players.filter(p=>p.id!==identity);
+ rivals.innerHTML=others.map(p=>{
+   const image=previews[p.id];
+   const visual=image?'<img alt="Live '+safe(p.name)+' game view" src="'+image+'">':
+      '<div class="noPreview">'+(p.eliminated?'ELIMINATED':p.finished?'FINISHED':p.online?'AWAITING GAME VIEW':'OFFLINE')+'</div>';
+   return '<div class="rival" style="--crew:'+safe(p.color)+'"><label>● '+safe(p.name)+'<small>'+Number(p.score||0)+'</small></label>'+visual+'</div>';
+ }).join('');
+}
+const previewBuffer=document.createElement('canvas');
+previewBuffer.width=176;previewBuffer.height=100;
+let lastPreview=0;
+function activeGameCanvas(){
+ if(!room||!playing)return null;
+ if(room.game==='bags')return $('#bagCanvas');
+ const iframe={
+   cabin:'#cabinFrame',assist:'#assistFrame',docs:'#docFrame',marshal:'#airFrame'
+ }[room.game];
+ if(iframe){try{return $(iframe)?.contentDocument?.querySelector('canvas')||null}catch{return null}}
+ return $('#game canvas')||document.querySelector('canvas');
+}
+function sendPreview(){
+ if(!playing||room?.stage!=='round'||localFinished||socket?.readyState!==WebSocket.OPEN)return;
+ if(Date.now()-lastPreview<1800)return;lastPreview=Date.now();
+ try{
+  const src=activeGameCanvas();
+  if(!src||src.width<30||src.height<30)return;
+  const context=previewBuffer.getContext('2d');
+  context.fillStyle='#0b1e2a';context.fillRect(0,0,176,100);
+  const scale=Math.min(176/src.width,100/src.height),w=src.width*scale,h=src.height*scale;
+  context.drawImage(src,(176-w)/2,(100-h)/2,w,h);
+  const image=previewBuffer.toDataURL('image/jpeg',.28);
+  if(image.length<21000)emit({type:'preview',image});
+ }catch(err){/* tainted or unavailable game canvas: keep score-only preview */}
+}
 function playGame(){
  if(room?.stage!=='round'||mine()?.eliminated||mine()?.finished)return;
  const info=game(room.game),b=$(info[3]);if(!b){error('This game could not be launched.');return}
- playing=true;localFinished=false;startAt=Date.now();hide();$('#afFront')?.classList.add('playing');b.click();dockView();
+ playing=true;localFinished=false;startAt=Date.now();hide();
+ $('#afFront')?.classList.add('playing');
+ document.body.classList.add('afNetworkRound');
+ b.click();dockView();rivalsView();
 }
 function stopGame(){
  if(!playing)return;playing=false;
@@ -194,7 +238,7 @@ function stopGame(){
  if(button)$(button)?.click();
  if(room?.game==='marshal')$('#airFrame')?.contentDocument?.querySelector('#mainMenu')?.click();
  }catch(e){console.warn(e)}
- $('#intro')?.classList.remove('hide');$('#afFront')?.classList.remove('playing');dockView();
+ $('#intro')?.classList.remove('hide');$('#afFront')?.classList.remove('playing');document.body.classList.remove('afNetworkRound');dockView();rivalsView();
 }
 function finish(){
  if(!playing||localFinished||room?.stage!=='round')return;
@@ -202,18 +246,18 @@ function finish(){
  const score=measured();localFinished=true;emit({type:'finish',score});stopGame();open();
 }
 function dockView(){
- const on=!!room&&room.stage==='round'&&playing&&!localFinished;dock.classList.toggle('visible',on);if(!on)return;
+ const on=!!room&&room.stage==='round'&&playing&&!localFinished;dock.classList.toggle('visible',on);rivalsView();if(!on)return;
  dock.style.setProperty('--pcolor',mine()?.color||'#4cd3ff');
  dock.innerHTML='<div>● '+safe(mine()?.name)+' · '+(room.tiebreak?'PLAYOFF':'GAME '+(room.index+1))+'</div><div>⏱ '+remaining()+'s · SCORE '+measured()+'</div><button id="afDockRoom">ROOM</button><button id="afDockFinish" class="finish">FINISH</button>';
  $('#afDockRoom').onclick=open;$('#afDockFinish').onclick=finish;
 }
 function leave(){
- emit({type:'leave'});stopGame();room=null;identity=null;token=null;lastCode='';clearTimeout(reconnect);safeStore.del('sessionStorage','afOnlineSession');
+ emit({type:'leave'});stopGame();room=null;identity=null;token=null;lastCode='';previews={};document.body.classList.remove('afNetworkRoom','afNetworkRound');clearTimeout(reconnect);safeStore.del('sessionStorage','afOnlineSession');rivalsView();
  if(socket){socket.onclose=null;socket.close();socket=null}
  const u=new URL(location.href);u.searchParams.delete('room');history.replaceState(null,'',u);hide();dockView();
 }
 $('#afOnlineRoomClose').onclick=hide;launch.onclick=open;
-setInterval(()=>{if(room?.stage==='round'){if(playing&&!localFinished){emit({type:'score',score:measured()});dockView()}if($('#afTime'))$('#afTime').textContent=remaining();}},1000);
+setInterval(()=>{if(room?.stage==='round'){if(playing&&!localFinished){emit({type:'score',score:measured()});sendPreview();dockView()}if($('#afTime'))$('#afTime').textContent=remaining();}},1000);
 window.__AF_ONLINE={open,getState:()=>({room,identity,playing,score:measured()})};
 const query=new URL(location.href).searchParams.get('room');if(query){open();try{const data=JSON.parse(safeStore.get('sessionStorage','afOnlineSession')||'{}');if(data.code===query&&data.token){token=data.token;identity=data.id;name=data.name||name;connect('join',query,true)}}catch(e){}}
 })();
