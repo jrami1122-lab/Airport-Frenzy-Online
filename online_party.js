@@ -118,9 +118,12 @@ function connect(type,code='',reconnecting=false){
    if(d.type==='identity'){identity=d.id;token=d.token}
    if(d.type==='room'){
      const old=room;room=d;lastCode=d.code;safeStore.set('sessionStorage','afOnlineSession',JSON.stringify({id:identity,token,code:d.code,name}));
+     document.body.classList.toggle('afNetworkRoom',!!room);
      if(playing&&(old?.stage==='round'&&d.stage!=='round'||old?.game&&old.game!==d.game))stopGame();
-     if(old?.index!==d.index)localFinished=false;
-     error('');render();dockView();
+     if(old?.index!==d.index||old?.game!==d.game||old?.stage!=='round'){localFinished=false;previews={};}
+     error('');render();dockView();rivalsView();
+   }else if(d.type==='preview'&&room?.stage==='round'&&d.game===room.game&&d.id!==identity){
+     if(typeof d.image==='string'&&d.image.startsWith('data:image/jpeg;base64,')&&d.image.length<22000){previews[d.id]=d.image;rivalsView();}
    }else if(d.type==='error')error(d.message);
  };
  ws.onerror=()=>error('Unable to connect to party server.');
@@ -140,10 +143,10 @@ function render(){
  const players=room.players.slice().sort((a,b)=>b.pts-a.pts);
  let section='';
  if(room.stage==='lobby'){
- section='<h3>CREW LOBBY · '+players.length+'/4</h3>'+players.map(player).join('')+'<div class="row"><button id="afTournament" '+(!host()?'disabled':'')+' class="'+(room.mode==='tournament'?'primary':'')+'">🏆 TOURNAMENT</button><button id="afSingle" '+(!host()?'disabled':'')+' class="'+(room.mode==='single'?'primary':'')+'">🎮 SINGLE GAME</button></div>';
- if(room.mode==='single')section+='<label>GAME<select id="afGameSelect" '+(!host()?'disabled':'')+'>'+GAMES.map(g=>'<option value="'+g[0]+'" '+(room.preferredGame===g[0]?'selected':'')+'>'+g[2]+' '+g[1]+'</option>').join('')+'</select></label>';
- section+='<p class="note">Six-game rotation: after Game 4, anyone still on zero points is eliminated. Top score after Game 6 wins. A tie triggers a best-of-three playoff.</p>';
- section+=host()?'<button id="afStart" class="primary" '+(players.length<2?'disabled':'')+'>START '+(room.mode==='single'?'GAME':'TOURNAMENT')+'</button>':'<p>Waiting for host to start…</p>';
+ section='<h3>CREW LOBBY · '+players.length+'/4</h3><p class="note">Host chooses what this group plays next. Each person plays on their own device, with live opponent previews where supported.</p>'+players.map(player).join('')+'<div class="modeChoices"><button id="afTournament" '+(!host()?'disabled':'')+' class="'+(room.mode==='tournament'?'active':'')+'"><strong>🏆 PARTY MODE</strong><small>Six rotating airport games · live points · elimination after Game 4</small></button><button id="afSingle" '+(!host()?'disabled':'')+' class="'+(room.mode==='single'?'active':'')+'"><strong>🎮 CASUAL MODE</strong><small>Choose any one game with friends · no tournament rotation</small></button></div>';
+ if(room.mode==='single')section+='<label>SELECT A GAME<select id="afGameSelect" '+(!host()?'disabled':'')+'>'+GAMES.map(g=>'<option value="'+g[0]+'" '+(room.preferredGame===g[0]?'selected':'')+'>'+g[2]+' '+g[1]+'</option>').join('')+'</select></label>';
+ section+=room.mode==='tournament'?'<p class="note">Six-game rotation: zero total points after Game 4 means elimination. Most points after Game 6 wins; ties enter a best-of-three playoff.</p>':'<p class="note">Casual Mode: all crew members compete in one selected game. Local split-screen variants are disabled in online rooms.</p>';
+ section+=host()?'<button id="afStart" class="primary" '+(players.length<2?'disabled':'')+'>START '+(room.mode==='single'?'CASUAL GAME':'PARTY TOURNAMENT')+'</button>':'<p>Waiting for host to start…</p>';
  }else if(room.stage==='round'){
  const info=game(room.game),active=!mine()?.eliminated&&(!room.tiebreak||room.tiebreakPlayers.includes(identity));
  section='<h3>'+(room.tiebreak?'PLAYOFF '+room.tiebreakRound:room.mode==='single'?'SINGLE GAME':'GAME '+(room.index+1)+'/6')+' · '+info[2]+' '+info[1]+'</h3><p>⏱ <b id="afTime">'+remaining()+'</b> seconds left. All players compete on their own devices.</p>'+players.map(p=>player(p).replace(p.pts+' PTS',p.score+' SCORE')).join('');
