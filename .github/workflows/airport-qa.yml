@@ -25,7 +25,7 @@ jobs:
           page=Path("index.html").read_text()
           js=Path("online_party.js").read_text()
           server=Path("server.py").read_text()
-          for name in ("PARTY MODE","CASUAL MODE","START A LOBBY","id=\"startMarshal\"","id=\"startBagSolo\"","id=\"af-online-v12\""):
+          for name in ("PARTY MODE","CASUAL MODE","START A LOBBY","id=\"startMarshal\"","id=\"startBagSolo\"","src=\"/online_party.js?v=13\""):
               assert name in page, name
           for name in ("function sendPreview()","function rivalsView()","afNetworkRoom","modeChoices"):
               assert name in js,name
