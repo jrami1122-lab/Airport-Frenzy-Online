@@ -69,6 +69,10 @@ const css=document.createElement('style');css.textContent=[
 body.afNetworkRoom .afGames .versus,body.afNetworkRoom #startBagVersus,body.afNetworkRoom #startAssistVersus,body.afNetworkRoom #startVersus,body.afNetworkRoom #startDocsPass{filter:grayscale(1);opacity:.28!important;pointer-events:none!important;cursor:not-allowed!important;}
 @media(max-width:680px){#afRivals{width:104px;right:3px;bottom:max(95px,env(safe-area-inset-bottom) + 75px);gap:3px}#afRivals .rival img{height:44px}#afRivals .rival label{font-size:9px;padding:2px 4px}#afRivals .noPreview{height:22px;font-size:9px;}#afCrewDock.visible{max-width:168px;right:5px;top:5px;}#afOnlineRoom .modeChoices button{padding:9px;min-height:90px}}
 @media(max-height:410px){#afRivals{bottom:7px;width:100px}#afRivals .rival img{height:25px}#afRivals .noPreview{height:15px}}
+`;css.textContent+=`
+#afOnlineRoom .afSyncNumber{font:900 clamp(65px,16vw,125px)/1 system-ui;color:#ffe07a;text-align:center;padding:12px;text-shadow:0 2px 20px #2cbbffc0;font-variant-numeric:tabular-nums;}
+#afOnlineRoom .card{min-height:220px;}
+#afRivals{opacity:.93}
 `;document.head.appendChild(css);
 const pane=document.createElement('div');pane.id='afOnlineRoom';pane.innerHTML='<div class="card"><div class="top"><h2>✈️ AIRPORT FRENZY ONLINE</h2><button id="afOnlineRoomClose">✕</button></div><div id="afOnlineRoomBody"></div><div id="afOnlineRoomErr"></div></div>';document.body.appendChild(pane);
 const dock=document.createElement('div');dock.id='afCrewDock';document.body.appendChild(dock);
@@ -101,8 +105,12 @@ if(mount&&!$('#afGameJump')){
  });
 }
 let socket=null,room=null,identity=null,token=null,playing=false,localFinished=false,startAt=0,reconnect=null;
+let serverDelta=0, launchedRoundId=-1;
+const clockMs=()=>Date.now()+serverDelta;
+const untilStart=()=>Math.max(0,Math.ceil(((room?.startAt||0)*1000-clockMs())/1000));
+const untilNext=()=>Math.max(0,Math.ceil(((room?.intermissionEnd||0)*1000-clockMs())/1000));
 let name=safeStore.get('localStorage','afPlayerName')||'Player',lastCode='';
-const mine=()=>room?.players?.find(x=>x.id===identity),host=()=>room?.host===identity,remaining=()=>Math.max(0,Math.ceil((room?.deadline||0)-Date.now()/1000));
+const mine=()=>room?.players?.find(x=>x.id===identity),host=()=>room?.host===identity,remaining=()=>Math.max(0,Math.ceil(((room?.deadline||0)*1000-clockMs())/1000));
 function error(msg){$('#afOnlineRoomErr').textContent=msg}
 function open(){pane.classList.add('open');render()}
 function hide(){pane.classList.remove('open')}
@@ -117,10 +125,16 @@ function connect(type,code='',reconnecting=false){
  ws.onmessage=e=>{let d;try{d=JSON.parse(e.data)}catch{return}
    if(d.type==='identity'){identity=d.id;token=d.token}
    if(d.type==='room'){
-     const old=room;room=d;lastCode=d.code;safeStore.set('sessionStorage','afOnlineSession',JSON.stringify({id:identity,token,code:d.code,name}));
+     const old=room;
+     // Server timestamps remove differing local phone/PC clock drift.
+     if(typeof d.serverNow==='number')serverDelta=d.serverNow*1000-Date.now();
+     room=d;lastCode=d.code;safeStore.set('sessionStorage','afOnlineSession',JSON.stringify({id:identity,token,code:d.code,name}));
      document.body.classList.toggle('afNetworkRoom',!!room);
-     if(playing&&(old?.stage==='round'&&d.stage!=='round'||old?.game&&old.game!==d.game))stopGame();
-     if(old?.index!==d.index||old?.game!==d.game||old?.stage!=='round'){localFinished=false;previews={};}
+     const changedRound=old&&old.roundId!==d.roundId;
+     if(playing&&(changedRound||old?.game!==d.game||(old?.stage==='round'&&d.stage!=='round')))stopGame();
+     if(changedRound||old?.game!==d.game){localFinished=false;previews={};}
+     if(d.stage==='countdown'||d.stage==='results'||d.stage==='tiebreak_ready'||d.stage==='finished'){open()}
+     else if(d.stage==='round'&&(!playing||old?.stage==='countdown')){syncMatch()}
      error('');render();dockView();rivalsView();
    }else if(d.type==='preview'&&room?.stage==='round'&&d.game===room.game&&d.id!==identity){
      if(typeof d.image==='string'&&d.image.startsWith('data:image/jpeg;base64,')&&d.image.length<22000){previews[d.id]=d.image;rivalsView();}
@@ -147,16 +161,22 @@ function render(){
  if(room.mode==='single')section+='<label>SELECT A GAME<select id="afGameSelect" '+(!host()?'disabled':'')+'>'+GAMES.map(g=>'<option value="'+g[0]+'" '+(room.preferredGame===g[0]?'selected':'')+'>'+g[2]+' '+g[1]+'</option>').join('')+'</select></label>';
  section+=room.mode==='tournament'?'<p class="note">Six-game rotation: zero total points after Game 4 means elimination. Most points after Game 6 wins; ties enter a best-of-three playoff.</p>':'<p class="note">Casual Mode: all crew members compete in one selected game. Local split-screen variants are disabled in online rooms.</p>';
  section+=host()?'<button id="afStart" class="primary" '+(players.length<2?'disabled':'')+'>START '+(room.mode==='single'?'CASUAL GAME':'PARTY TOURNAMENT')+'</button>':'<p>Waiting for host to start…</p>';
+ }else if(room.stage==='countdown'){
+ const info=game(room.game);
+ section='<h3>'+(room.tiebreak?'PLAYOFF '+room.tiebreakRound:room.mode==='single'?'CASUAL MODE':'PARTY MODE · GAME '+(room.index+1)+'/6')+'</h3>'
+   +'<h2>'+info[2]+' '+info[1]+'</h2><p class="note">All connected players launch together automatically. Keep this page open.</p>'
+   +'<div class="afSyncNumber" id="afSyncCountdown">'+untilStart()+'</div>'
+   +players.map(player).join('');
  }else if(room.stage==='round'){
  const info=game(room.game),active=!mine()?.eliminated&&(!room.tiebreak||room.tiebreakPlayers.includes(identity));
  section='<h3>'+(room.tiebreak?'PLAYOFF '+room.tiebreakRound:room.mode==='single'?'SINGLE GAME':'GAME '+(room.index+1)+'/6')+' · '+info[2]+' '+info[1]+'</h3><p>⏱ <b id="afTime">'+remaining()+'</b> seconds left. All players compete on their own devices.</p>'+players.map(p=>player(p).replace(p.pts+' PTS',p.score+' SCORE')).join('');
- section+=active&&!mine()?.finished?'<button class="primary" id="afPlay">'+(playing?'RETURN TO GAME':'PLAY THIS GAME')+'</button><p>Finish your attempt from the crew panel inside the game.</p>':'<p class="note">Waiting for active crew members to finish.</p>';
+ section+=active&&!mine()?.finished?'<p class="note">Everyone started together. Your score reports automatically. Round ends when the timer expires or all active players finish.</p><button class="primary" id="afPlay">'+(playing?'RETURN TO GAME':'ENTER ACTIVE GAME')+'</button>':'<p class="note">Spectating this round.</p>';
  }else if(room.stage==='results'){
  section='<h3>GAME '+(room.index+1)+' RESULTS</h3>'+(room.results||[]).map(r=>{const p=players.find(x=>x.id===r.id);return p?player(p).replace(p.pts+' PTS',r.score+' · +'+(room.tiebreak?0:r.earned)+' PTS'):''}).join('')+'<h3>OVERALL</h3>'+players.map(player).join('');
  if(room.mode==='tournament'&&room.index===3)section+='<p class="note">Game 4 elimination: players remaining at zero total points are out.</p>';
- section+=host()?'<button class="primary" id="afNext">NEXT GAME</button>':'<p>Waiting for host…</p>';
+ section+='<p class="note">Next game starts automatically in <b id="afIntermission">'+untilNext()+'</b> seconds.</p>'+(host()?'<button id="afNext">SKIP BREAK · NEXT GAME</button>':'');
  }else if(room.stage==='tiebreak_ready'){
- section='<h3>BEST-OF-THREE PLAYOFF</h3><p>Tied leaders play up to three tiebreakers. First to two wins takes the trophy; unresolved ties continue in sudden death.</p>'+players.filter(p=>room.tiebreakPlayers.includes(p.id)).map(player).join('')+(host()?'<button class="primary" id="afNext">START PLAYOFF</button>':'<p>Waiting for host…</p>');
+ section='<h3>BEST-OF-THREE PLAYOFF</h3><p>Tied leaders play up to three tiebreakers. First to two wins takes the trophy; unresolved ties continue in sudden death.</p>'+players.filter(p=>room.tiebreakPlayers.includes(p.id)).map(player).join('')+'<p class="note">Playoff launches in <b id="afIntermission">'+untilNext()+'</b> seconds.</p>'+(host()?'<button class="primary" id="afNext">START NOW</button>':'');
  }else if(room.stage==='finished'){
  section='<h3>🏆 CHAMPION: '+safe(players.find(p=>p.id===room.winner)?.name||'Crew')+'</h3>'+players.map(player).join('')+(host()?'<button id="afRematch" class="primary">PLAY ANOTHER MATCH</button>':'');
  }
@@ -224,12 +244,25 @@ function sendPreview(){
  }catch(err){/* tainted or unavailable game canvas: keep score-only preview */}
 }
 function playGame(){
- if(room?.stage!=='round'||mine()?.eliminated||mine()?.finished)return;
- const info=game(room.game),b=$(info[3]);if(!b){error('This game could not be launched.');return}
- playing=true;localFinished=false;startAt=Date.now();hide();
+ const canStart=room?.stage==='round'||(room?.stage==='countdown'&&untilStart()===0);
+ if(!canStart||mine()?.eliminated||mine()?.finished||
+     (room?.tiebreak&&!room?.tiebreakPlayers.includes(identity)))return;
+ if(playing){hide();return;}
+ const info=game(room.game),b=$(info[3]);if(!b){error('Could not launch '+info[1]+'. Open Casual Mode and check that game.');return}
+ launchedRoundId=room.roundId;
+ playing=true;localFinished=false;startAt=clockMs();hide();
  $('#afFront')?.classList.add('playing');
  document.body.classList.add('afNetworkRound');
- b.click();dockView();rivalsView();
+ try{b.click()}catch(e){playing=false;error('Game launch failed: '+e.message);open();return}
+ dockView();rivalsView();
+}
+// Called on *every* device. No per-player Play button is required.
+function syncMatch(){
+ if(!room||!['round','countdown'].includes(room.stage))return;
+ if(untilStart()>0)return;
+ if(playing||launchedRoundId===room.roundId||mine()?.finished)return;
+ if(mine()?.eliminated||(room.tiebreak&&!room.tiebreakPlayers.includes(identity))){hide();return}
+ playGame();
 }
 function stopGame(){
  if(!playing)return;playing=false;
@@ -257,7 +290,23 @@ function leave(){
  const u=new URL(location.href);u.searchParams.delete('room');history.replaceState(null,'',u);hide();dockView();
 }
 $('#afOnlineRoomClose').onclick=hide;launch.onclick=open;
-setInterval(()=>{if(room?.stage==='round'){if(playing&&!localFinished){emit({type:'score',score:measured()});sendPreview();dockView()}if($('#afTime'))$('#afTime').textContent=remaining();}},1000);
+setInterval(()=>{
+ if(!room)return;
+ if(room.stage==='countdown'||room.stage==='round'){
+   if($('#afSyncCountdown'))$('#afSyncCountdown').textContent=untilStart()||'GO!';
+   syncMatch();
+   if($('#afTime'))$('#afTime').textContent=remaining();
+ }
+ if(room.stage==='results'||room.stage==='tiebreak_ready'){
+   if($('#afIntermission'))$('#afIntermission').textContent=untilNext();
+ }
+},100);
+setInterval(()=>{
+ if(room?.stage==='round'&&playing&&!localFinished){
+   emit({type:'score',score:measured()});
+   sendPreview();dockView();
+ }
+},1000);
 window.__AF_ONLINE={open,getState:()=>({room,identity,playing,score:measured()})};
 const query=new URL(location.href).searchParams.get('room');if(query){open();try{const data=JSON.parse(safeStore.get('sessionStorage','afOnlineSession')||'{}');if(data.code===query&&data.token){token=data.token;identity=data.id;name=data.name||name;connect('join',query,true)}}catch(e){}}
 })();
