@@ -30,6 +30,8 @@ async def main():
     assert await page.locator(btn).count()==1, "Missing minigame "+btn
    await page.locator("#startMarshal").click()
    frame=page.frame_locator("#airFrame")
+   await page.wait_for_timeout(500)
+   print("MARSHAL DEBUG",{"errors":errs,"iframe":(await frame.locator("body").inner_text())[:260],"hints":await frame.locator("#leftCheck").count(),"submithelp":await frame.locator("#submitHelp").count()},flush=True)
    await frame.locator("#leftCheck").wait_for(timeout=12000)
    assert await frame.locator("#signalHint").count()==0,"Old combined-position answer bubble remains"
    assert "(double tap for double signal)" == (await frame.locator("#submitHelp").inner_text()).strip()
