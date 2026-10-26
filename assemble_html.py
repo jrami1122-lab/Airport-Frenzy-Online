@@ -26,7 +26,7 @@ if(originalMarshal && !document.querySelector('#afGameMount #startMarshal')){
   document.querySelector('#afGameMount .arcadeGrid')?.append(originalMarshal);
 }
 const lobbyScript=document.createElement('script');
-lobbyScript.src='/online_party.js?v=14';
+lobbyScript.src='/online_party.js?v=balance16';
 lobbyScript.async=false;
 document.body.append(lobbyScript);
 """
@@ -38,8 +38,8 @@ html=html.replace('<button id="gameSelect"><small>CHOOSE YOUR SHIFT</small>GAME 
     '<button id="gameSelect"><small>CHOOSE ANY CHALLENGE</small>🎮 CASUAL MODE <em>›</em></button>'
     '<button id="afLobbyLaunch"><small>2–4 PEOPLE · INVITE WITH CODE OR LINK</small>🌐 START A LOBBY <em>›</em></button>',1)
 html=html.replace('6 AIRPORT CHALLENGES · OFFLINE READY','6 GAMES · ONLINE ROOMS OR LOCAL PLAY',1)
-html=html.replace("MOBILE FIXED v3","ONLINE CREWS v1.3",1)
-required=['id="partyPlay"','id="gameSelect"','id="afLobbyLaunch"','id="startMarshal"',"lobbyScript.src='/online_party.js?v=14'"]
+html=html.replace("MOBILE FIXED v3","BALANCED CREWS v1.6",1)
+required=['id="partyPlay"','id="gameSelect"','id="afLobbyLaunch"','id="startMarshal"',"lobbyScript.src='/online_party.js?v=balance16'"]
 if any(needle not in html for needle in required):
     raise RuntimeError("Home mode / online game menu injection failed")
 from game_balance import patch as balance_games
