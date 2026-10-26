@@ -88,36 +88,95 @@ def patch_marshalling(s):
     """let sequence=[],playerIndex=0,round=1,running=false,paused=false,demoing=false,expected=null,tapCount=0,tapTimer=0,circleReady={l:false,r:false},best=+(localStorage.airMarshallBest||0),audio=null,points=0;
 const scorePill=document.createElement('div');
 scorePill.className='pill';scorePill.innerHTML='SCORE <b id="score">0</b>';game.querySelector('.hud')?.append(scorePill);
-const signalHint=document.createElement('div');signalHint.id='signalHint';
-signalHint.style.cssText='position:absolute;left:50%;top:54%;transform:translateX(-50%);max-width:95vw;min-width:220px;text-align:center;color:#eafff8;background:#0a3045e8;border:1px solid #a1e5e7;border-radius:8px;z-index:17;padding:5px 9px;font:800 12px system-ui;pointer-events:none';
-game.append(signalHint);""","marshalling scoring and hint")
+// A neutral control hint is always present; no combined pose or correctness badge.
+const submitHelp=document.createElement('small');submitHelp.id='submitHelp';
+submitHelp.textContent='(double tap for double signal)';
+submitHelp.style.cssText='position:absolute;z-index:15;left:50%;bottom:max(3px,env(safe-area-inset-bottom));transform:translateX(-50%);font:600 10px/1.25 system-ui;color:#f1f7fb;text-align:center;white-space:nowrap;text-shadow:0 2px 4px #001;pointer-events:none';
+game.append(submitHelp);
+submit.style.bottom='max(27px,calc(env(safe-area-inset-bottom) + 24px))';
+const signalStyle=document.createElement('style');
+signalStyle.textContent='.game #submit{bottom:max(27px,calc(env(safe-area-inset-bottom) + 24px))!important}.game #submitHelp{display:block}.game .armCheck.ready{background:#071f30e8!important;color:#fff!important;border-color:#8bdfff70!important;box-shadow:0 6px 18px #0018!important}';
+document.head.append(signalStyle);""","marshalling scoring and hint")
     s=replace_one(s,"armChecks[side].classList.remove('ready')}",
-    "armChecks[side].classList.remove('ready');updateSignalHint()}","update two-wand hint")
+    "armChecks[side].classList.remove('ready')}","wand status stays neutral")
     s=replace_one(s,"function matches(c){return zones.l===c.l&&zones.r===c.r&&(!c.circle||circleReady[c.circle])}",
     """function matches(c){return zones.l===c.l&&zones.r===c.r&&(!c.circle||circleReady[c.circle])}
-function availableSignals(){return commands.filter(c=>zones.l===c.l&&zones.r===c.r)}
-function updateSignalHint(){
- const list=availableSignals();
- signalHint.textContent='CURRENT SIGNAL: '+(list.length?list.map(c=>
- c.name+(c.circle&&!circleReady[c.circle]?' (DRAW RIGHT CIRCLE)':c.taps===2?' (DOUBLE SIGNAL)':'')).join(' / '):
- 'NO VALID SIGNAL · ADJUST BOTH WANDS');
- signalHint.style.borderColor=list.length?'#82ffc0':'#fdbb6e';
-}""","combined signal labels")
+// Individual arm panels display ALL possible commands for THAT arm position only.
+// They must never filter by the opposite wand or by the instructor's target.
+function armOptions(side){
+ return commands.filter(c=>c[side]===zones[side]).map(c=>
+ c.name+(c.taps===2?' (DOUBLE)':'')+(c.circle?' (CIRCLE '+c.circle.toUpperCase()+')':''));
+}
+function armLabel(side){return (side==='l'?'LEFT':'RIGHT')+' — '+armOptions(side).join(' · ')}
+let pendingSignalTimer=null,pendingSignature=null;
+function signalSignature(){return zones.l+'|'+zones.r+'|'+!!circleReady.r+'|'+!!circleReady.l}
+function resolveSubmission(taps){
+ clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;tapCount=0;
+ if(!running||paused||demoing)return;
+ const expected=sequence[playerIndex];
+ const actual=commands.find(c=>matches(c)&&(c.taps===2?2:1)===taps);
+ if(!actual||!expected||actual.id!==expected.id){fail(expected);return}
+ points+=100+Math.min(100,(round-1)*10);
+ scorePill.querySelector('#score').textContent=points;
+ parent.AF_AUDIO?.effect('ding',{gain:.85});
+ sfx('good');message.textContent='CORRECT SIGNAL';game.classList.add('flash');
+ setTimeout(()=>game.classList.remove('flash'),220);playerIndex++;resetPose();
+ if(playerIndex===sequence.length){
+  round++;best=Math.max(best,sequence.length);
+  localStorage.airMarshallBest=best;bestEl.textContent='BEST '+best;
+  step.textContent='SEQUENCE CLEAR';setTimeout(nextRound,850)
+ }else step.textContent='YOUR TURN · '+(playerIndex+1)+'/'+sequence.length;
+}""","no combined signal readout and Simon submission evaluation")
+    # Generate each guide directly from the authoritative commands: no stale
+    # hand-maintained list and no cross-arm matching indicator.
+    start=s.find("function armFeedback(side){")
+    end=s.find("function setPose(side,",start)
+    if start<0 or end<0:raise RuntimeError("original arm feedback missing")
+    s=s[:start]+"""function armFeedback(side){
+ armChecks[side].textContent=armLabel(side);
+ armChecks[side].classList.remove('ready');
+}
+"""+s[end:]
+    s=replace_one(s,
+      "function fail(c){if(!running)return;running=false;sfx('bad');",
+      "function fail(c){if(!running)return;clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;running=false;parent.AF_AUDIO?.effect('wrong',{gain:.8});sfx('bad');",
+      "wrong submission should fail")
+    s=replace_one(s,
+      "'</b> full rounds.<br>The expected signal was <b>'+c.name+'</b>.';",
+      "'</b> full rounds.<br>Incorrect signal. Try again to repeat the sequence.';",
+      "no correct-answer spoiler after fail")
+    s=replace_one(s,
+      "function begin(){sequence=[];round=1;playerIndex=0;running=true;",
+      "function begin(){clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;sequence=[];round=1;playerIndex=0;running=true;",
+      "clear pending submit on restart")
+    s=replace_one(s,
+      "function resetPose(){lastReady.l=lastReady.r=false;",
+      "function resetPose(){clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;lastReady.l=lastReady.r=false;",
+      "reset submitted gesture")
     s=replace_one(s,"function begin(){sequence=[];round=1;playerIndex=0;running=true;",
     "function begin(){sequence=[];round=1;playerIndex=0;points=0;scorePill.querySelector('#score').textContent=0;running=true;","marshalling score reset")
     s=replace_one(s,"function submitSignal(){if(!running||paused||demoing)return;const c=sequence[playerIndex];",
-    """function submitSignal(){if(!running||paused||demoing)return;const c=sequence[playerIndex];
- if(!availableSignals().length){message.textContent='NOT A VALID SIGNAL · MOVE THE WANDS';sfx('cue');return}
- if(c.circle&&!circleReady[c.circle]&&zones.l===c.l&&zones.r===c.r){
- message.textContent='DRAW A RIGHT WAND CIRCLE FIRST';return;
- }""","no loss for unrecognized signals")
-    # A slow second tap should not end a run; only a completed incorrect signal can fail.
-    s=replace_one(s,
-        "tapTimer=setTimeout(()=>{if(tapCount<2)fail(c)},650);",
-        "tapTimer=setTimeout(()=>{if(tapCount<2){tapCount=0;message.textContent='DOUBLE SIGNAL REQUIRED · TRY AGAIN'}},1100);",
-        "allow second-tap retry")
-    s=replace_one(s,"if(matches(c)){sfx('good');message.textContent='CORRECT · '+c.name;",
-    "if(matches(c)){points+=100+Math.min(100,(round-1)*10);scorePill.querySelector('#score').textContent=points;sfx('good');message.textContent='CORRECT · '+c.name;","award confirmed signal score")
+    """function submitSignal(){
+ if(!running||paused||demoing)return;
+ const expected=sequence[playerIndex];
+ if(pendingSignalTimer){
+  if(pendingSignature!==signalSignature()){clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;fail(expected);return}
+  resolveSubmission(2);return;
+ }
+ // A submitted invalid configuration is an incorrect answer: this is Simon Says.
+ const possibilities=commands.filter(c=>matches(c));
+ if(!possibilities.length){fail(expected);return}
+ if(possibilities.some(c=>c.taps===2)){
+  // Both single and double versions exist for this wand position.
+  // Never reveal which one the instructor requested.
+  pendingSignature=signalSignature();
+  pendingSignalTimer=setTimeout(()=>resolveSubmission(1),900);
+  message.textContent='SIGNAL RECEIVED';return;
+ }
+ resolveSubmission(1);
+}""","submit full signal without pre-answer help")
+    # The new submit handler resolves only the gesture actually performed
+    # (including double-press timing); wrong answers fail at submission.
     start=s.find("function zoneFrom(side,x,y){")
     end=s.find("function drag(side,e)",start)
     if start<0 or end<0:raise RuntimeError("marshalling drag classifier missing")
@@ -142,7 +201,7 @@ function updateSignalHint(){
         "h.onpointerup=h.onpointercancel=v=>{const box=person.getBoundingClientRect(),sx=box.left+(side==='l'?90:168),sy=box.top+104;move(v);",
         "fix Air Marshalling undefined pointerup shoulder coordinates")
     s=replace_one(s,"addEventListener('resize',resetPose);resetPose();",
-    "addEventListener('resize',resetPose);resetPose();updateSignalHint();","initialize command readout")
+    "addEventListener('resize',resetPose);resetPose();","no center hint initialization")
     return s
 
 def patch(html):
