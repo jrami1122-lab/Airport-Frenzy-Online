@@ -72,6 +72,12 @@ def patch_cabin(s):
     code=base64.b64decode(m.group(2)).decode("utf-8")
     code=replace_one(code,"CAPACITY=12,MAX_ROUNDS=20","CAPACITY=12,MAX_ROUNDS=10","10-trip cabin")
     code=replace_one(code,"START 20-TRIP SHIFT","START 10-TRIP SHIFT","cabin button")
+    # Show true net service points during the shift rather than deferring customer
+    # penalties until the last trip; this is the score the online room observes.
+    code=replace_one(code, "$('#score').textContent=score;",
+      "$('#score').textContent=Math.max(0,score-lost*500);", "live net cabin score")
+    code=replace_one(code,"const penalty=lost*500,final=score-penalty",
+      "const penalty=lost*500,final=Math.max(0,score-penalty)","nonnegative final cabin score")
     return s[:m.start(2)]+base64.b64encode(code.encode()).decode()+s[m.end(2):]
 
 def patch_marshalling(s):
