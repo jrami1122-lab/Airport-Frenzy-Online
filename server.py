@@ -195,7 +195,7 @@ async def dispatch(r, p, data):
             return
         if points < 0 or points > 10000000:
             return
-        p["score"] = max(p["score"], points)
+        p["score"] = points  # Actual current score, not peak before a crash or penalty
         if action == "finish":
             p["finished"] = True
             if all(x["finished"] or not x["online"] for x in eligible(r)):
