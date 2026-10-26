@@ -172,6 +172,19 @@ async def dispatch(r, p, data):
             if all(x["finished"] or not x["online"] for x in eligible(r)):
                 await finish_round(r)
                 return
+    elif action == "preview" and r["stage"] == "round" and p in eligible(r) and not p["finished"]:
+        # Live game-only thumbnail previews, never webcam/video input.
+        # Limit payload size and frequency to preserve mobile performance.
+        img = data.get("image", "")
+        now = time.monotonic()
+        if (isinstance(img, str) and img.startswith("data:image/jpeg;base64,")
+                and len(img) < 22000 and now - p.get("last_preview", 0) >= 1.25):
+            p["last_preview"] = now
+            frame = {"type": "preview", "id": p["id"], "game": view_room(r)["game"],
+                     "image": img, "color": p["color"], "score": p["score"]}
+            await asyncio.gather(*(send(other.get("ws"), frame) for other in r["players"]
+                                   if other["id"] != p["id"] and other["online"]))
+        return
     elif action == "next" and host and r["stage"] in ("results", "tiebreak_ready"):
         await begin_round(r, playoff=r["tiebreak"])
         return
@@ -197,7 +210,7 @@ async def dispatch(r, p, data):
 
 
 async def websocket(request):
-    ws = web.WebSocketResponse(heartbeat=20, max_msg_size=8192)
+    ws = web.WebSocketResponse(heartbeat=20, max_msg_size=32000)
     await ws.prepare(request)
     room = me = None
     await send(ws, {"type": "welcome", "version": 1})
