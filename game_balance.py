@@ -153,8 +153,8 @@ function resolveSubmission(taps){
       "function resetPose(){lastReady.l=lastReady.r=false;",
       "function resetPose(){clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;lastReady.l=lastReady.r=false;",
       "reset submitted gesture")
-    s=replace_one(s,"function begin(){sequence=[];round=1;playerIndex=0;running=true;",
-    "function begin(){sequence=[];round=1;playerIndex=0;points=0;scorePill.querySelector('#score').textContent=0;running=true;","marshalling score reset")
+    s=replace_one(s,"pendingSignature=null;sequence=[];round=1;playerIndex=0;running=true;",
+    "pendingSignature=null;sequence=[];round=1;playerIndex=0;points=0;scorePill.querySelector('#score').textContent=0;running=true;","marshalling score reset")
     s=replace_one(s,"function submitSignal(){if(!running||paused||demoing)return;const c=sequence[playerIndex];",
     """function submitSignal(){
  if(!running||paused||demoing)return;
