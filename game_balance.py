@@ -14,7 +14,7 @@ const DEPOT={x:270,y:750,r:145},SHIFT_SECONDS=150;
 function bankCarts(p){
  if(!p.alive||p.carts.length<6||p.bankCooldown>0||distance(p,DEPOT)>DEPOT.r)return;
  const n=Math.min(10,p.carts.length),points=n*150+(n===10?200:0);
- p.carts.splice(0,n);p.banked+=points;p.delivered+=n;p.bankCooldown=1.7;
+ p.carts.splice(-n);p.banked+=points;p.delivered+=n;p.bankCooldown=1.7;
  message(p.id+' DEPOSITED '+n+' CARTS · +'+points+' BANKED!');
  burst(DEPOT.x,DEPOT.y,p.color);beep(940,.18,'sine');updateHud();
 }
@@ -111,6 +111,11 @@ function updateSignalHint(){
  if(c.circle&&!circleReady[c.circle]&&zones.l===c.l&&zones.r===c.r){
  message.textContent='DRAW A RIGHT WAND CIRCLE FIRST';return;
  }""","no loss for unrecognized signals")
+    # A slow second tap should not end a run; only a completed incorrect signal can fail.
+    s=replace_one(s,
+        "tapTimer=setTimeout(()=>{if(tapCount<2)fail(c)},650);",
+        "tapTimer=setTimeout(()=>{if(tapCount<2){tapCount=0;message.textContent='DOUBLE SIGNAL REQUIRED · TRY AGAIN'}},1100);",
+        "allow second-tap retry")
     s=replace_one(s,"if(matches(c)){sfx('good');message.textContent='CORRECT · '+c.name;",
     "if(matches(c)){points+=100+Math.min(100,(round-1)*10);scorePill.querySelector('#score').textContent=points;sfx('good');message.textContent='CORRECT · '+c.name;","award confirmed signal score")
     start=s.find("function zoneFrom(side,x,y){")
