@@ -2,7 +2,7 @@ name: Airport Frenzy UI & multiplayer smoke tests
 on:
   push:
     branches: [main]
-    paths: ["online_party.js","server.py","assemble_html.py","browser_smoke.py","game_source/**",".github/workflows/airport-qa.yml"]
+    paths: ["online_party.js","server.py","assemble_html.py","browser_smoke.py","test_four_crews.py","game_source/**",".github/workflows/airport-qa.yml"]
   workflow_dispatch:
 jobs:
   smoke:
@@ -32,6 +32,8 @@ jobs:
           assert 'action == "preview"' in server
           print("Core menu & opponent preview wiring verified.")
           PY
+      - name: Verify four simultaneous players and streamed game previews
+        run: python test_four_crews.py
       - name: Start local web server and test browser flows
         run: |
           python server.py > /tmp/airport-qa-server.log 2>&1 &
