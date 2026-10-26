@@ -134,6 +134,13 @@ function updateSignalHint(){
  return result;
 }
 """+s[end:]
+    # Original pointerup closure referenced sx/sy defined only inside pointermove.
+    # Recompute shoulder coordinates on release so circular and ordinary drags
+    # cannot throw ReferenceError and skip the actual signal recognition.
+    s=replace_one(s,
+        "h.onpointerup=h.onpointercancel=v=>{move(v);",
+        "h.onpointerup=h.onpointercancel=v=>{const box=person.getBoundingClientRect(),sx=box.left+(side==='l'?90:168),sy=box.top+104;move(v);",
+        "fix Air Marshalling undefined pointerup shoulder coordinates")
     s=replace_one(s,"addEventListener('resize',resetPose);resetPose();",
     "addEventListener('resize',resetPose);resetPose();updateSignalHint();","initialize command readout")
     return s
