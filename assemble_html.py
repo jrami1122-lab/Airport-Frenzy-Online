@@ -41,7 +41,7 @@ html=html.replace('<button id="gameSelect"><small>CHOOSE YOUR SHIFT</small>GAME 
     '<button id="gameSelect"><small>CHOOSE ANY CHALLENGE</small>🎮 CASUAL MODE <em>›</em></button>'
     '<button id="afLobbyLaunch"><small>2–4 PEOPLE · INVITE WITH CODE OR LINK</small>🌐 START A LOBBY <em>›</em></button>',1)
 html=html.replace('6 AIRPORT CHALLENGES · OFFLINE READY','6 GAMES · ONLINE ROOMS OR LOCAL PLAY',1)
-html=html.replace("MOBILE FIXED v3","BALANCED CREWS v1.6",1)
+html=html.replace("MOBILE FIXED v3","SIMON MARSHALLING v1.7",1)
 required=['id="partyPlay"','id="gameSelect"','id="afLobbyLaunch"','id="startMarshal"',"lobbyScript.src='/online_party.js?v=balance16'"]
 if any(needle not in html for needle in required):
     raise RuntimeError("Home mode / online game menu injection failed")
@@ -50,4 +50,4 @@ html=balance_games(html)
 from audio_event_patch import patch as add_game_audio
 html=add_game_audio(html)
 (ROOT/"index.html").write_text(html,encoding="utf-8")
-print(f"Assembled Airport Frenzy Online v1.5 / gameplay rebalance with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
+print(f"Assembled Airport Frenzy Online v1.7 / Simon Says marshalling with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
