@@ -14,6 +14,8 @@ GAMES = ("ramp", "bags", "cabin", "assist", "docs", "marshal")
 COLORS = ("#4CD3FF", "#FFCF4A", "#FF6B72", "#A78BFA")
 ROOMS = {}
 SECONDS = max(30, int(os.environ.get("ROUND_SECONDS", "150")))
+COUNTDOWN = max(3, int(os.environ.get("COUNTDOWN_SECONDS", "6")))
+INTERMISSION = max(5, int(os.environ.get("INTERMISSION_SECONDS", "9")))
 
 
 def safe_name(value):
@@ -30,6 +32,7 @@ def view_room(r):
     return {"type": "room", "code": r["code"], "host": r["host"], "stage": r["stage"], "mode": r["mode"],
             "game": games[i] if 0 <= i < len(games) else None, "games": games, "index": i,
             "players": [view_player(p) for p in r["players"]], "deadline": r["deadline"],
+            "startAt": r["startAt"], "serverNow": time.time(), "intermissionEnd": r["intermissionEnd"], "roundId": r["roundId"],
             "results": r["results"], "winner": r["winner"], "tiebreak": r["tiebreak"],
             "tiebreakRound": r["tiebreakRound"], "tiebreakPlayers": r["tiebreakPlayers"],
             "preferredGame": r["preferredGame"]}
@@ -53,7 +56,8 @@ def new_room():
         code = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
         if code not in ROOMS:
             r = {"code": code, "host": None, "stage": "lobby", "players": [], "mode": "tournament",
-                 "preferredGame": "ramp", "games": [], "index": -1, "deadline": 0, "timer": None,
+                 "preferredGame": "ramp", "games": [], "index": -1, "deadline": 0, "startAt": 0,
+                 "roundId": 0, "intermissionEnd": 0, "timer": None,
                  "results": [], "winner": None, "tiebreak": False, "tiebreakRound": 0,
                  "tiebreakPlayers": [], "created": time.monotonic()}
             ROOMS[code] = r
@@ -72,11 +76,28 @@ def cancel_timer(r):
     r["timer"] = None
 
 
-async def round_timeout(r, index, deadline):
+async def round_clock(r, round_id, start_at, deadline):
+    """One authoritative clock schedules the same game for every connected client."""
     try:
+        await asyncio.sleep(max(0, start_at - time.time()))
+        if r["stage"] != "countdown" or r["roundId"] != round_id:
+            return
+        r["stage"] = "round"
+        await broadcast(r)
         await asyncio.sleep(max(0, deadline - time.time()))
-        if r["stage"] == "round" and r["index"] == index and r["deadline"] == deadline:
+        if r["stage"] == "round" and r["roundId"] == round_id:
             await finish_round(r)
+    except asyncio.CancelledError:
+        pass
+
+
+async def intermission_clock(r, round_id, when):
+    """Tournament rotation never depends on the host pressing Next Game."""
+    try:
+        await asyncio.sleep(max(0, when - time.time()))
+        if r["roundId"] != round_id or r["stage"] not in ("results", "tiebreak_ready"):
+            return
+        await begin_round(r, playoff=r["tiebreak"])
     except asyncio.CancelledError:
         pass
 
@@ -89,13 +110,16 @@ async def begin_round(r, playoff=False):
         r["index"] = 0
     else:
         r["index"] += 1
+    r["roundId"] += 1
     r["results"] = []
-    r["stage"] = "round"
-    r["deadline"] = time.time() + SECONDS
+    r["stage"] = "countdown"
+    r["startAt"] = time.time() + COUNTDOWN
+    r["deadline"] = r["startAt"] + SECONDS
+    r["intermissionEnd"] = 0
     for p in r["players"]:
         p["score"] = 0
         p["finished"] = False
-    r["timer"] = asyncio.create_task(round_timeout(r, r["index"], r["deadline"]))
+    r["timer"] = asyncio.create_task(round_clock(r, r["roundId"], r["startAt"], r["deadline"]))
     await broadcast(r)
 
 
@@ -142,6 +166,11 @@ async def finish_round(r):
                     r["tiebreakPlayers"] = [p["id"] for p in leaders]
                     r["tiebreakRound"] = 0
                     r["stage"] = "tiebreak_ready"
+    if r["stage"] in ("results", "tiebreak_ready"):
+        r["intermissionEnd"] = time.time() + INTERMISSION
+        r["timer"] = asyncio.create_task(intermission_clock(r, r["roundId"], r["intermissionEnd"]))
+    else:
+        r["intermissionEnd"] = 0
     await broadcast(r)
 
 
@@ -186,10 +215,13 @@ async def dispatch(r, p, data):
                                    if other["id"] != p["id"] and other["online"]))
         return
     elif action == "next" and host and r["stage"] in ("results", "tiebreak_ready"):
+        # Optional host skip of the intermission; automatic rotation remains the default.
         await begin_round(r, playoff=r["tiebreak"])
         return
     elif action == "rematch" and host and r["stage"] == "finished":
-        r.update(stage="lobby", games=[], index=-1, deadline=0, results=[], winner=None, tiebreak=False,
+        cancel_timer(r)
+        r.update(stage="lobby", games=[], index=-1, deadline=0, startAt=0, intermissionEnd=0,
+                 results=[], winner=None, tiebreak=False,
                  tiebreakRound=0, tiebreakPlayers=[])
         for x in r["players"]:
             x.update(pts=0, wins=0, score=0, finished=False, eliminated=False, tiebreakWins=0)
