@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: airport-frenzy-online
+    runtime: python
+    plan: free
+    region: virginia
+    buildCommand: pip install -r requirements.txt && python assemble_html.py
+    startCommand: python server.py
