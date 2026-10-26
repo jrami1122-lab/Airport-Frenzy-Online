@@ -16,6 +16,10 @@ async def main():
                 page.on("pageerror",lambda e:errors.append(str(e)))
                 await page.goto(BASE,wait_until="domcontentloaded",timeout=60000)
                 await page.locator("#afLobbyLaunch").wait_for(state="attached",timeout=60000)
+                await page.locator("#afAudioToggle").wait_for(state="attached",timeout=12000)
+                assert await page.evaluate("!!window.AF_AUDIO && typeof AF_AUDIO.effect==='function' && typeof AF_AUDIO.music==='function'"),"Audio director not loaded"
+                assert await page.locator("#afMusicVolume").count()==1,"Music volume missing"
+                assert await page.locator("#afFxVolume").count()==1,"Effects volume missing"
                 main_buttons=page.locator("#afFront .afMainButtons button")
                 assert await main_buttons.count()==3, "Expected exactly 3 home modes"
                 for sel,txt in (("#partyPlay","PARTY MODE"),("#gameSelect","CASUAL MODE"),("#afLobbyLaunch","START A LOBBY")):
