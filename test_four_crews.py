@@ -1,6 +1,7 @@
 """Four-device room test: joins, colors, host mode, gameplay and live views."""
 import asyncio
 import server
+server.COUNTDOWN=3
 from aiohttp.test_utils import TestServer, TestClient
 
 async def until(ws, typ, limit=5):
@@ -41,12 +42,21 @@ async def main():
                     configured=await until(sockets[3],"room")
                 await sockets[0].send_json({"type":"start"})
                 started=await until(sockets[3],"room")
-                assert started["stage"]=="round" and started["game"]=="bags"
+                assert started["stage"]=="countdown" and started["game"]=="bags"
+                assert 0<started["startAt"]<started["deadline"]
+                for k in range(3):
+                    notice=await until(sockets[k],"room")
+                    while notice["stage"]!="countdown":notice=await until(sockets[k],"room")
+                    assert notice["startAt"]==started["startAt"] and notice["roundId"]==started["roundId"]
+                # Score sent before kickoff is ignored: no early advantage.
+                await sockets[0].send_json({"type":"score","score":500})
+                live=await until(sockets[3],"room")
+                assert live["stage"]=="round" and live["startAt"]==started["startAt"]
                 await sockets[0].send_json({"type":"score","score":220})
                 await sockets[0].send_json({"type":"preview","image":"data:image/jpeg;base64,AAAA"})
                 frame=await until(sockets[3],"preview")
                 assert frame["id"]==started["host"] and frame["image"].startswith("data:image/jpeg")
-                print("PASS: four distinct player connections, unique colors, max-four cap, Casual Mode, Bag Stacker, score and live picture previews.")
+                print("PASS: four unique colors, shared countdown for four clients, early-score lockout, live Bag Stacker scoring and streamed preview.")
             finally:
                 for ws in sockets:
                     await ws.close()
