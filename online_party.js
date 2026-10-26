@@ -202,7 +202,7 @@ function measured(){
  if(g==='bags')return num(window.__AF_BAG_SCORE?.());
  const frame={cabin:'#cabinFrame',assist:'#assistFrame',docs:'#docFrame',marshal:'#airFrame'}[g],doc=$(frame)?.contentDocument;
  if(!doc)return 0;
- return g==='marshal'?Math.max(0,num(doc.querySelector('#round')?.textContent)-1):num(doc.querySelector('#score')?.textContent);
+ return num(doc.querySelector('#score')?.textContent);
  }catch(e){console.warn(e);return 0}
 }
 
