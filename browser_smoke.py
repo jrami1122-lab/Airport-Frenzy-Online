@@ -30,6 +30,8 @@ async def main():
                     print("DEBUG game_count:",game_count,flush=True)
                     print("DEBUG game headings:",await page.locator(".gameChoice h2").all_inner_texts(),flush=True)
                     print("DEBUG page errors:",errors[:12],flush=True)
+                    script_diagnostic=await page.evaluate("""() => {let e=document.querySelector('#af-online-v12'),s=e?.textContent||'';let pos=s.indexOf('#afGameJump');return {len:s.length,preview:s.slice(Math.max(0,pos-120),pos+210),begin:s.slice(0,150),end:s.slice(-150),hasApi:!!window.__AF_ONLINE};}""")
+                    print("DEBUG online inline script:",script_diagnostic,flush=True)
                     print("DEBUG original marshal count:",await page.locator("#startMarshal").count(),flush=True)
                     print("DEBUG game mount:",(await page.locator("#afGameMount").inner_html())[:1200],flush=True)
                 assert game_count>=6, "Lost one of six games: "+str(game_count)
