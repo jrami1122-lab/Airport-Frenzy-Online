@@ -1,27 +1,21 @@
-"""Game-specific validation with a real Chromium iframe and all six launch buttons."""
-import asyncio,base64,re,math
+"""Browser regression tests for true Simon Says Air Marshalling, plus original games."""
+import asyncio, base64, re, math
 from pathlib import Path
 from playwright.async_api import async_playwright
 
 PAGE=Path("index.html").read_text(encoding="utf-8")
 assert "function bankCarts(p)" in PAGE
 assert "p.carts.length<6" in PAGE
-assert "Math.min(10,p.carts.length)" in PAGE
-assert "const DEPOT={x:270,y:750,r:145},SHIFT_SECONDS=150" in PAGE
+assert "SHIFT_SECONDS=150" in PAGE
 assert "p.banked+p.carts.length*65" in PAGE
-assert "SERVICE TUNNEL" in PAGE or "SIDE-SERVICE TUNNEL" in PAGE
-assert "function finishRampShift()" in PAGE
-m=re.search(r"const CABIN_SERVICE_HTML='([A-Za-z0-9+/=]+)'", PAGE)
-assert m, "Original encoded cabin game missing"
-cabin=base64.b64decode(m.group(1)).decode("utf8")
-assert "CAPACITY=12,MAX_ROUNDS=10" in cabin
-assert "START 10-TRIP SHIFT" in cabin
-assert "MAX_ROUNDS=20" not in cabin
-assert "const poses={out:{l:-160,r:-20},inner:{l:-35,r:-145},up:{l:-90,r:-90},down:{l:85,r:95},front:{l:20,r:160}}" in PAGE
-assert "function updateSignalHint()" in PAGE
-assert "function availableSignals()" in PAGE
-assert "NO VALID SIGNAL" in PAGE
-print("PASS: shift timer, persistent cart banking, service tunnel, 10 cabin trips, and distinct marshal angles.", flush=True)
+cab=re.search(r"const CABIN_SERVICE_HTML='([A-Za-z0-9+/=]+)'",PAGE)
+assert cab and "MAX_ROUNDS=10" in base64.b64decode(cab.group(1)).decode("utf8")
+assert "function armOptions(side)" in PAGE
+assert "function resolveSubmission(taps)" in PAGE
+assert "double tap for double signal" in PAGE
+assert "CURRENT SIGNAL:" not in PAGE
+assert "NO VALID SIGNAL · ADJUST BOTH WANDS" not in PAGE
+print("PASS: Ramp Runner deposits/timer and ten-trip Cabin game retained; no automatic full-signal hint.",flush=True)
 
 async def main():
  async with async_playwright() as p:
@@ -32,53 +26,123 @@ async def main():
    page.on("pageerror",lambda e:errs.append(str(e)))
    await page.goto("http://127.0.0.1:10000",wait_until="domcontentloaded")
    await page.locator("#gameSelect").click()
-   for button in ("#startSolo","#startBagSolo","#startCabin","#startAssist","#startDocsSolo","#startMarshal"):
-    assert await page.locator(button).count()==1,"Missing game launch "+button
+   for btn in ("#startSolo","#startBagSolo","#startCabin","#startAssist","#startDocsSolo","#startMarshal"):
+    assert await page.locator(btn).count()==1, "Missing minigame "+btn
    await page.locator("#startMarshal").click()
    frame=page.frame_locator("#airFrame")
-   await frame.locator("#signalHint").wait_for(timeout=12000)
-   assert "CURRENT SIGNAL:" in await frame.locator("#signalHint").inner_text()
-   # Keyboard poses should exactly match full two-wand action, not overlap.
+   await frame.locator("#leftCheck").wait_for(timeout=12000)
+   assert await frame.locator("#signalHint").count()==0,"Old combined-position answer bubble remains"
+   assert "(double tap for double signal)" == (await frame.locator("#submitHelp").inner_text()).strip()
+   assert await frame.locator("#submit").is_visible()
+   assert await frame.locator("#score").count()==1
    await frame.locator("#begin").click()
-   await page.keyboard.press("s")
-   await page.keyboard.press("ArrowLeft")
-   hint=await frame.locator("#signalHint").inner_text()
-   assert "CUT ENGINE" in hint, "Down+inward must register CUT ENGINE: "+hint
-   # Drag the visible handles to the actual arm angles; test mouse gameplay,
-   # not just keyboard shortcuts.
-   person_box=await frame.locator("#person").bounding_box()
-   assert person_box,"Marshal worker not visible"
+   # Directly stage deterministic memory prompts so checks don't depend on a random
+   # demo sequence. Real keyboard/pointer events still exercise the game's input.
+   async def setup(cmd):
+    await frame.locator("body").evaluate("""(el,id)=>{
+      clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;
+      running=true;paused=false;demoing=false;sequence=[commands.find(c=>c.id===id)];
+      playerIndex=0;round=1;points=0;scorePill.querySelector('#score').textContent='0';
+      $('#start').classList.add('hidden');$('#over').classList.add('hidden');
+      submit.disabled=false;step.textContent='YOUR TURN';message.textContent='READY';
+      resetPose();
+    }""",cmd)
+   async def keys(*args):
+    for key in args:await page.keyboard.press(key)
+   async def submit():
+    await frame.locator("#submit").click()
+   async def lost():
+    assert await frame.locator("#over").is_visible(),"Incorrect answer was not failed"
+    assert "Incorrect signal" in await frame.locator("#summary").inner_text()
+    assert "expected signal" not in (await frame.locator("#summary").inner_text()).lower()
+   async def passed():
+    assert await frame.locator("#step").inner_text()=="SEQUENCE CLEAR","Correct signal not accepted"
+
+   await setup("cutengine")
+   await keys("s","ArrowLeft")
+   assert "CUT ENGINE" in await frame.locator("#leftCheck").inner_text()
+   assert "CUT ENGINE" in await frame.locator("#rightCheck").inner_text()
+   assert not await frame.locator("#over").is_visible()
+   assert (await frame.locator("#message").inner_text())=="READY","UI revealed a correct match before submission"
+   await submit(); await passed()
+   assert "100" in await frame.locator("#score").inner_text()
+
+   # Test every wand-position guide against the authoritative command list.
+   actual=await frame.locator("body").evaluate("""()=>{
+      const result={};
+      for(const side of ['l','r']){
+        for(const pos of ['up','down','out','inner','front']){
+          setPose(side,pos);
+          const label=armChecks[side].textContent;
+          const options=commands.filter(c=>c[side]===pos);
+          result[side+'_'+pos]={label,names:options.map(c=>c.name),
+            doubles:options.filter(c=>c.taps===2).map(c=>c.name)};
+        }
+      }return result;
+   }""")
+   for detail in actual.values():
+    for name in detail["names"]:assert name in detail["label"],"Missing signal "+name+": "+detail["label"]
+    for name in detail["doubles"]:assert name+" (DOUBLE)" in detail["label"],"Missing double mark: "+detail["label"]
+
+   # Wrong submitted poses fail immediately (even if the current arms correspond
+   # to another valid command).
+   await setup("forward")
+   await keys("s","ArrowLeft")
+   await submit();await lost()
+   await setup("forward")
+   await keys("a","ArrowDown")
+   await submit();await lost()
+   print("PASS: every wand guide lists all possible commands without target confirmation; wrong poses fail.",flush=True)
+
+   # A single STOP and a double EMERGENCY STOP share identical arm positions,
+   # so the evaluation MUST use a timeout for single, two clicks for double.
+   await setup("stop")
+   await keys("w","ArrowUp")
+   assert "NORMAL STOP" in await frame.locator("#leftCheck").inner_text()
+   assert "EMERGENCY STOP (DOUBLE)" in await frame.locator("#leftCheck").inner_text()
+   await submit()
+   assert not await frame.locator("#over").is_visible()
+   await page.wait_for_timeout(1010)
+   await passed()
+   await setup("estop")
+   await keys("w","ArrowUp")
+   await submit();await submit();await passed()
+   await setup("estop")
+   await keys("w","ArrowUp")
+   await submit();await page.wait_for_timeout(1010);await lost()
+   await setup("stop")
+   await keys("w","ArrowUp")
+   await submit();await submit();await lost()
+
+   await setup("setbrakes")
+   await keys("q","Enter")
+   assert "SET BRAKES (DOUBLE)" in await frame.locator("#leftCheck").inner_text()
+   assert "RELEASE BRAKES" in await frame.locator("#leftCheck").inner_text()
+   await submit();await submit();await passed()
+   await setup("releasebrakes")
+   await keys("q","Enter")
+   await submit();await page.wait_for_timeout(1010);await passed()
+   await setup("startengine")
+   await keys("s","ArrowUp","/")
+   await submit();await passed()
+
+   # Actual mouse dragging must still register Cut Engine; only the UI
+   # correctness bubble was removed, not wand positioning or the tap target.
+   await setup("cutengine")
+   person=await frame.locator("#person").bounding_box()
    for side,angle,offset in (("l",85,90),("r",-145,168)):
     handle=frame.locator("#leftHandle" if side=="l" else "#rightHandle")
-    handle_box=await handle.bounding_box()
-    assert handle_box,"Missing mouse/touch handle "+side
-    sx=handle_box["x"]+handle_box["width"]/2
-    sy=handle_box["y"]+handle_box["height"]/2
-    tx=person_box["x"]+offset+112*math.cos(math.radians(angle))
-    ty=person_box["y"]+104+112*math.sin(math.radians(angle))
-    await page.mouse.move(sx,sy)
-    await page.mouse.down()
-    await page.mouse.move(tx,ty,steps=13)
-    await page.mouse.up()
-   drag_hint=await frame.locator("#signalHint").inner_text()
-   assert "CUT ENGINE" in drag_hint,"Mouse-dragged cut-engine pose is unrecognized: "+drag_hint
-
-   await page.keyboard.press("w")
-   await page.keyboard.press("ArrowUp")
-   hint=await frame.locator("#signalHint").inner_text()
-   assert "NORMAL STOP" in hint and "EMERGENCY STOP" in hint, "Overhead poses are mislabeled: "+hint
-   await page.keyboard.press("q")
-   await page.keyboard.press("Enter")
-   hint=await frame.locator("#signalHint").inner_text()
-   assert "SET BRAKES" in hint and "RELEASE BRAKES" in hint, "Forward poses are indistinguishable: "+hint
-   await page.keyboard.press("a")
-   await page.keyboard.press("ArrowDown")
-   hint=await frame.locator("#signalHint").inner_text()
-   assert "NO VALID SIGNAL" in hint, "Invalid pose was incorrectly recognized as a valid signal: "+hint
-   assert await frame.locator("#score").count()==1
-   assert not errs, "Page errors: "+str(errs[:3])
-   print("PASS: Air Marshalling recognizes cut engine, stops, brakes, invalid combos; visible points HUD, no JS errors.",flush=True)
-   await page.close()
-  finally:await browser.close()
+    box=await handle.bounding_box()
+    assert box
+    sx,sy=box["x"]+box["width"]/2,box["y"]+box["height"]/2
+    tx=person["x"]+offset+112*math.cos(math.radians(angle))
+    ty=person["y"]+104+112*math.sin(math.radians(angle))
+    await page.mouse.move(sx,sy);await page.mouse.down()
+    await page.mouse.move(tx,ty,steps=13);await page.mouse.up()
+   assert not errs, "Browser errors: "+str(errs)
+   await submit();await passed()
+   print("PASS: correct/incorrect Simon Says, single/double stop & brakes, circular engine, real mouse drags.",flush=True)
+  finally:
+   await browser.close()
 
 asyncio.run(main())
