@@ -155,26 +155,29 @@ function resolveSubmission(taps){
       "reset submitted gesture")
     s=replace_one(s,"pendingSignature=null;sequence=[];round=1;playerIndex=0;running=true;",
     "pendingSignature=null;sequence=[];round=1;playerIndex=0;points=0;scorePill.querySelector('#score').textContent=0;running=true;","marshalling score reset")
-    s=replace_one(s,"function submitSignal(){if(!running||paused||demoing)return;const c=sequence[playerIndex];",
-    """function submitSignal(){
+    # Replace the ENTIRE legacy submit handler: leaving its former tail would
+    # create a syntax error and accidentally retain its target-based grading.
+    start=s.find("function submitSignal(){")
+    end=s.find("function fail(c)",start)
+    if start<0 or end<0:raise RuntimeError("original marshalling submit handler missing")
+    s=s[:start]+"""function submitSignal(){
  if(!running||paused||demoing)return;
  const expected=sequence[playerIndex];
  if(pendingSignalTimer){
   if(pendingSignature!==signalSignature()){clearTimeout(pendingSignalTimer);pendingSignalTimer=null;pendingSignature=null;fail(expected);return}
   resolveSubmission(2);return;
  }
- // A submitted invalid configuration is an incorrect answer: this is Simon Says.
+ // Judge what the player actually submitted, never the requested command first.
  const possibilities=commands.filter(c=>matches(c));
  if(!possibilities.length){fail(expected);return}
  if(possibilities.some(c=>c.taps===2)){
-  // Both single and double versions exist for this wand position.
-  // Never reveal which one the instructor requested.
   pendingSignature=signalSignature();
   pendingSignalTimer=setTimeout(()=>resolveSubmission(1),900);
   message.textContent='SIGNAL RECEIVED';return;
  }
  resolveSubmission(1);
-}""","submit full signal without pre-answer help")
+}
+"""+s[end:]
     # The new submit handler resolves only the gesture actually performed
     # (including double-press timing); wrong answers fail at submission.
     start=s.find("function zoneFrom(side,x,y){")
