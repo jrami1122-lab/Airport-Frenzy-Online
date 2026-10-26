@@ -2,7 +2,7 @@ name: Airport Frenzy UI & multiplayer smoke tests
 on:
   push:
     branches: [main]
-    paths: ["online_party.js","server.py","assemble_html.py","game_source/**",".github/workflows/airport-qa.yml"]
+    paths: ["online_party.js","server.py","assemble_html.py","browser_smoke.py","game_source/**",".github/workflows/airport-qa.yml"]
   workflow_dispatch:
 jobs:
   smoke:
@@ -37,3 +37,10 @@ jobs:
           python server.py > /tmp/airport-qa-server.log 2>&1 &
           sleep 3
           python browser_smoke.py
+      - name: Save browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: airport-menus-and-bag-game
+          path: /tmp/airport-smoke/*.png
+          if-no-files-found: ignore
