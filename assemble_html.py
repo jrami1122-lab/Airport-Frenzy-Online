@@ -15,7 +15,7 @@ if 'id="partyPlay"' not in html or 'id="startMarshal"' not in html:
 script=(ROOT/"online_party.js").read_text(encoding="utf-8")
 if not script.strip().startswith("(()=>") or 'window.__AF_ONLINE=' not in script:
     raise RuntimeError("Online Party UI did not pass its build guard")
-html=html.replace(external,'<script id="af-online-v12">\\n'+script.replace("</script", "<\\/script")+'\\n</script>',1)
+html=html.replace(external,'<script id="af-online-v12">\n'+script.replace("</script", "<\/script")+'\n</script>',1)
 html=html.replace('<button id="partyPlay"><small>TOURNAMENT MODE</small>PARTY PLAY <em>›</em></button>',
     '<button id="partyPlay"><small>2–4 PLAYERS · ONLINE</small>ONLINE PARTY PLAY <em>›</em></button>',1)
 html=html.replace('6 AIRPORT CHALLENGES · OFFLINE READY','6 AIRPORT CHALLENGES · ONLINE READY',1)
