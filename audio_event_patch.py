@@ -27,8 +27,6 @@ def patch(html):
         "function finishRampShift(){\n if(!playing||paused)return;",
         "function finishRampShift(){\n if(!playing||paused)return;window.AF_AUDIO?.effect('ding',{gain:1});window.AF_AUDIO?.motor(false);",
         "ramp shift completion")
-    html=once(html,
-        "scorePill.querySelector('#score').textContent=points;sfx('good');message.textContent=",
-        "scorePill.querySelector('#score').textContent=points;parent.AF_AUDIO?.effect('ding',{gain:.85});sfx('good');message.textContent=",
-        "Air Marshalling recognized correct signal")
+    # Marshalling now triggers correct/wrong audio directly in its
+    # Simon Says submission handler, without exposing the target.
     return html
