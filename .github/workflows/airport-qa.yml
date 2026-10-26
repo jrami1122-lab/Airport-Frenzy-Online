@@ -1,0 +1,39 @@
+name: Airport Frenzy UI & multiplayer smoke tests
+on:
+  push:
+    branches: [main]
+    paths: ["online_party.js","server.py","assemble_html.py","game_source/**",".github/workflows/airport-qa.yml"]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: pip install -r requirements.txt playwright
+      - run: python -m playwright install chromium
+      - run: python -m py_compile server.py assemble_html.py
+      - run: node --check online_party.js
+      - run: python assemble_html.py
+      - name: Assert menu, game sources, and online preview support
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          page=Path("index.html").read_text()
+          js=Path("online_party.js").read_text()
+          server=Path("server.py").read_text()
+          for name in ("PARTY MODE","CASUAL MODE","START A LOBBY","id=\"startMarshal\"","id=\"startBagSolo\"","id=\"af-online-v12\""):
+              assert name in page, name
+          for name in ("function sendPreview()","function rivalsView()","afNetworkRoom","modeChoices"):
+              assert name in js,name
+          assert 'action == "preview"' in server
+          print("Core menu & opponent preview wiring verified.")
+          PY
+      - name: Start local web server and test browser flows
+        run: |
+          python server.py > /tmp/airport-qa-server.log 2>&1 &
+          sleep 3
+          python browser_smoke.py
