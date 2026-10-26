@@ -321,6 +321,23 @@ async def party_js(request):
     return web.FileResponse(ROOT / "online_party.js", headers={"Cache-Control": "no-store"})
 
 
+async def audio_js(request):
+    return web.FileResponse(ROOT / "audio_manager.js", headers={"Cache-Control": "no-store"})
+
+
+async def audio_file(request):
+    name = request.match_info.get("name", "")
+    # Fixed vocabulary: no directory traversal or arbitrary static file exposure.
+    allowed = {"music_menu","music_arcade","music_cabin","music_calm","sfx_thump",
+               "sfx_bag_drop","sfx_crash","sfx_wrong","sfx_ding","sfx_flyover","sfx_motor"}
+    if name not in allowed:
+        raise web.HTTPNotFound()
+    path = ROOT / "assets" / "audio" / (name+".mp3")
+    if not path.is_file():
+        raise web.HTTPNotFound(text="Audio asset not yet uploaded to this deployment")
+    return web.FileResponse(path, headers={"Cache-Control": "public, max-age=86400"})
+
+
 async def reap(app):
     while True:
         await asyncio.sleep(600)
@@ -346,6 +363,8 @@ app = web.Application(client_max_size=8192)
 app.router.add_get("/", index)
 app.router.add_get("/health", health)
 app.router.add_get("/online_party.js", party_js)
+app.router.add_get("/audio_manager.js", audio_js)
+app.router.add_get("/assets/audio/{name}.mp3", audio_file)
 app.router.add_get("/ws", websocket)
 app.on_startup.append(on_start)
 app.on_cleanup.append(on_stop)
