@@ -1,4 +1,9 @@
 (()=>{'use strict';
+const safeStore={
+ get:(kind,key)=>{try{return window[kind].getItem(key)}catch{return null}},
+ set:(kind,key,value)=>{try{window[kind].setItem(key,value)}catch{}},
+ del:(kind,key)=>{try{window[kind].removeItem(key)}catch{}}
+};
 const $=s=>document.querySelector(s),GAMES=[['ramp','Ramp Runner','🚜','#startSolo'],['bags','Bag Stacker','🧳','#startBagSolo'],['cabin','Flight Attendant','🛫','#startCabin'],['assist','Terminal Assist','♿','#startAssist'],['docs','Document Control','🛂','#startDocsSolo'],['marshal','Air Marshalling','🦺','#startMarshal']];
 const game=k=>GAMES.find(g=>g[0]===k)||GAMES[0],safe=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const css=document.createElement('style');css.textContent=[
@@ -64,14 +69,14 @@ if(mount&&!$('#afGameJump')){
  });
 }
 let socket=null,room=null,identity=null,token=null,playing=false,localFinished=false,startAt=0,reconnect=null;
-let name=localStorage.getItem('afPlayerName')||'Player',lastCode='';
+let name=safeStore.get('localStorage','afPlayerName')||'Player',lastCode='';
 const mine=()=>room?.players?.find(x=>x.id===identity),host=()=>room?.host===identity,remaining=()=>Math.max(0,Math.ceil((room?.deadline||0)-Date.now()/1000));
 function error(msg){$('#afOnlineRoomErr').textContent=msg}
 function open(){pane.classList.add('open');render()}
 function hide(){pane.classList.remove('open')}
 function emit(o){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(o));else error('Connection unavailable')}
 function connect(type,code='',reconnecting=false){
- if(!reconnecting){identity=null;token=null;room=null;sessionStorage.removeItem('afOnlineSession')}
+ if(!reconnecting){identity=null;token=null;room=null;safeStore.del('sessionStorage','afOnlineSession')}
  if(socket){socket.onclose=null;socket.close()}
  lastCode=code;
  const url=(location.protocol==='https:'?'wss:':'ws:')+'//'+location.host+'/ws';const ws=new WebSocket(url);socket=ws;
@@ -80,7 +85,7 @@ function connect(type,code='',reconnecting=false){
  ws.onmessage=e=>{let d;try{d=JSON.parse(e.data)}catch{return}
    if(d.type==='identity'){identity=d.id;token=d.token}
    if(d.type==='room'){
-     const old=room;room=d;lastCode=d.code;sessionStorage.setItem('afOnlineSession',JSON.stringify({id:identity,token,code:d.code,name}));
+     const old=room;room=d;lastCode=d.code;safeStore.set('sessionStorage','afOnlineSession',JSON.stringify({id:identity,token,code:d.code,name}));
      if(playing&&(old?.stage==='round'&&d.stage!=='round'||old?.game&&old.game!==d.game))stopGame();
      if(old?.index!==d.index)localFinished=false;
      error('');render();dockView();
@@ -95,8 +100,8 @@ function render(){
  const body=$('#afOnlineRoomBody');if(!room){
  const param=new URL(location.href).searchParams.get('room')||lastCode;
  body.innerHTML='<p>Create a private crew room or join a friend. Each player uses a separate device.</p><label>YOUR NAME<input id="afName" maxlength="20" value="'+safe(name)+'"></label><div class="row"><button class="primary" id="afCreate">CREATE ROOM</button></div><div class="row"><input id="afCodeInput" placeholder="Six-character code" maxlength="6" value="'+safe(param)+'"><button id="afJoin">JOIN ROOM</button></div><p class="note">Live scoring · 2–4 players · unique crew colors · six original arcade games</p><div class="row"><button id="afOfflineParty">LOCAL PARTY PLAY (SAME DEVICE)</button></div>';
- $('#afCreate').onclick=()=>{name=$('#afName').value||'Player';localStorage.setItem('afPlayerName',name);connect('create')};
- $('#afJoin').onclick=()=>{name=$('#afName').value||'Player';localStorage.setItem('afPlayerName',name);const code=$('#afCodeInput').value.trim().toUpperCase();if(code.length!==6){error('Enter all six characters.');return}connect('join',code)};
+ $('#afCreate').onclick=()=>{name=$('#afName').value||'Player';safeStore.set('localStorage','afPlayerName',name);connect('create')};
+ $('#afJoin').onclick=()=>{name=$('#afName').value||'Player';safeStore.set('localStorage','afPlayerName',name);const code=$('#afCodeInput').value.trim().toUpperCase();if(code.length!==6){error('Enter all six characters.');return}connect('join',code)};
  $('#afOfflineParty').onclick=localParty;
  return;
  }
@@ -168,12 +173,12 @@ function dockView(){
  $('#afDockRoom').onclick=open;$('#afDockFinish').onclick=finish;
 }
 function leave(){
- emit({type:'leave'});stopGame();room=null;identity=null;token=null;lastCode='';clearTimeout(reconnect);sessionStorage.removeItem('afOnlineSession');
+ emit({type:'leave'});stopGame();room=null;identity=null;token=null;lastCode='';clearTimeout(reconnect);safeStore.del('sessionStorage','afOnlineSession');
  if(socket){socket.onclose=null;socket.close();socket=null}
  const u=new URL(location.href);u.searchParams.delete('room');history.replaceState(null,'',u);hide();dockView();
 }
 $('#afOnlineRoomClose').onclick=hide;launch.onclick=open;
 setInterval(()=>{if(room?.stage==='round'){if(playing&&!localFinished){emit({type:'score',score:measured()});dockView()}if($('#afTime'))$('#afTime').textContent=remaining();}},1000);
 window.__AF_ONLINE={open,getState:()=>({room,identity,playing,score:measured()})};
-const query=new URL(location.href).searchParams.get('room');if(query){open();try{const data=JSON.parse(sessionStorage.getItem('afOnlineSession')||'{}');if(data.code===query&&data.token){token=data.token;identity=data.id;name=data.name||name;connect('join',query,true)}}catch(e){}}
+const query=new URL(location.href).searchParams.get('room');if(query){open();try{const data=JSON.parse(safeStore.get('sessionStorage','afOnlineSession')||'{}');if(data.code===query&&data.token){token=data.token;identity=data.id;name=data.name||name;connect('join',query,true)}}catch(e){}}
 })();
