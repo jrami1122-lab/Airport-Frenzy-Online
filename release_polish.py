@@ -120,9 +120,16 @@ button,a,input,select{touch-action:manipulation}
  #afShiftClock.visible #afShiftTime{font-size:14px!important}
  #afShiftClock #afShiftEnd{pointer-events:auto!important}
  #afRivals.visible{display:none!important}
+ #afShiftClock.visible{top:calc(3px + env(safe-area-inset-top))!important;bottom:auto!important}
+ #afShiftClock.visible #afShiftEnd{display:none!important}
+
  #afFront .afMainButtons{max-width:calc(100vw - 14px)!important}
  .cabinHost{overflow:hidden!important}
  .cabinHost iframe{width:100%;height:100dvh;max-width:100vw}
+}
+@media(pointer:coarse) and (max-height:600px){
+ #afLocalPlay{display:none!important}
+ #afRivals{display:none!important}
 }
 @media(orientation:landscape) and (max-height:510px){
  #afFront .afHome,#afFront .afPanel{max-height:100dvh!important}
