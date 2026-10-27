@@ -7,8 +7,8 @@ const info={
  bags:'LS move chute · X rotate bag · RT fast belt · MENU pause · B exit',
  assist:'LS wheelchair · RT forward · LT reverse · MENU pause · B exit',
  cabin:'D-PAD aisle · LT / X / Y | A / B / RT serve seats A-F · MENU pause',
- docs:'D-PAD/LS navigate · A/RT click · RS pointer · LB/RB tabs',
- marshal:'LS left wand · RS right wand · LB/RB forward wands · Y circle · A signal (twice for DOUBLE)'};
+ docs:'D-PAD select · A confirm · HOLD LB + left/right stick to scroll records · RB next tab',
+ marshal:'LS / RS freely rotate each wand 360° · Circle a stick for circular signals · A submit (twice for DOUBLE)'};
 const state=new Map();let connected=0,badge=null,help=null,focused=null,cursor=null,lastMode='',lastJoined=[],pausedContext=null;
 const DEAD=.32;
 function click(e){if(e&&!e.disabled&&e.getClientRects().length){e.click();return true}return false}
@@ -56,7 +56,15 @@ function mark(el){
 function focusNav(st,doc,dir){
  const all=buttons(doc);if(!all.length)return;
  const index=all.indexOf(focused),next=all[index<0?0:(index+dir+all.length)%all.length];
- mark(next);next.scrollIntoView({block:'nearest',inline:'nearest'});st.hovered=null;
+ mark(next);
+ // Focus changes must never scroll the Home page or reveal native scrollbars.
+ // Scroll content only in actual scrollable record panels, and only if needed.
+ if(!$('#afHome.active')||doc!==document){
+   const container=next.closest('[data-gamepad-scroll],.documentScroll,.caseScroll');
+   if(container&&container.scrollHeight>container.clientHeight+8)
+      container.scrollTop=Math.max(0,next.offsetTop-container.offsetTop-15);
+ }
+ st.hovered=null;
 }
 function pointerTarget(st,doc){
  if(!st.cur||st.cur.ownerDocument!==doc)return null;
@@ -117,6 +125,22 @@ function pause(m,doc){
 function seat(st,doc,letter){
  try{doc.dispatchEvent(new doc.defaultView.CustomEvent('af-cabin-seat',{detail:{seat:letter}}))}catch(e){}
 }
+function shoulderScroll(st,doc,amount){
+ const dy=Math.abs(amount)>.22?amount:0;if(!dy)return;
+ const target=st.hovered||doc.activeElement;
+ let scroller=target;
+ while(scroller&&scroller!==doc.documentElement){
+  const style=doc.defaultView.getComputedStyle(scroller);
+  if(scroller.scrollHeight>scroller.clientHeight+4 && /(auto|scroll)/.test(style.overflowY))break;
+  scroller=scroller.parentElement;
+ }
+ if(!scroller||scroller===doc.documentElement){
+  scroller=[...doc.querySelectorAll('main,section,article,.records,.panel,.sheet,[class*="scroll"],[class*="case"],[class*="list"]')]
+   .find(el=>el.scrollHeight>el.clientHeight+12&&/(auto|scroll)/.test(doc.defaultView.getComputedStyle(el).overflowY));
+ }
+ if(!scroller)scroller=doc.scrollingElement||doc.documentElement;
+ scroller.scrollTop+=dy*25;
+}
 function gameplay(st,g,index,ctx){
  const doc=ctx.doc,m=ctx.id,c=controls(g);const l=axis(g,0),y=axis(g,1),rx=axis(g,2),ry=axis(g,3);
  let keys=[];
@@ -133,11 +157,13 @@ function gameplay(st,g,index,ctx){
   if(m==='assist')keys=keys.map(k=>k.startsWith('Arrow')?k:({a:'ArrowLeft',d:'ArrowRight',w:'ArrowUp',s:'ArrowDown'}[k]));
  }else if(m==='marshal'){
   if(index!==0){release(st);return}
-  if(y<-.48)keys.push('w');else if(y>.48)keys.push('s');
-  if(l<-.48)keys.push('a');else if(l>.48)keys.push('d');
+  // Continuously stream both analog angles directly to the marshaller.
+  // The rendering is 360°; signal classification happens in the game.
+  if(!pressed(g,4)&&!pressed(g,5))
+   doc.dispatchEvent(new doc.defaultView.CustomEvent('af-marshal-analog',{
+    detail:{l:{x:l,y},r:{x:rx,y:ry}}
+   }));
   if(pressed(g,4))keys.push('q');
-  if(ry<-.48)keys.push('ArrowUp');else if(ry>.48)keys.push('ArrowDown');
-  if(rx<-.48)keys.push('ArrowLeft');else if(rx>.48)keys.push('ArrowRight');
   if(pressed(g,5))keys.push('Enter');
  }else if(m==='cabin'){
   if(c.up)keys.push('ArrowUp');if(c.down)keys.push('ArrowDown');
@@ -154,22 +180,28 @@ function gameplay(st,g,index,ctx){
  }
  if(m==='bags'){once(st,g,2,()=>tap(doc,index===0?'w':'ArrowUp'))}
  if(m==='docs'){
-  if(m==='docs'&&Math.abs(y)>.48&&Date.now()-st.nav>180){focusNav(st,doc,y>0?1:-1);st.nav=Date.now()}
-  if(m==='docs'){
-   once(st,g,2,()=>click(doc.querySelector('[data-decision="inquire"]')));
-   once(st,g,3,()=>click(doc.querySelector('[data-decision="report"]')));
-  }
+  const scrolling=pressed(g,4)||pressed(g,5);
+  if(scrolling)shoulderScroll(st,doc,Math.abs(ry)>.22?ry:y);
+  else if(Math.abs(y)>.48&&Date.now()-st.nav>180){focusNav(st,doc,y>0?1:-1);st.nav=Date.now()}
+  once(st,g,2,()=>click(doc.querySelector('[data-decision="inquire"]')));
+  once(st,g,3,()=>click(doc.querySelector('[data-decision="report"]')));
   if(Math.abs(rx)>.12||Math.abs(ry)>.12)cursorAt(st,doc,rx,ry,false);
   once(st,g,0,()=>select(st,doc));
   once(st,g,7,()=>cursorAt(st,doc,0,0,true));
-  once(st,g,4,()=>{const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.max(0,cur-1)])});
-  once(st,g,5,()=>{const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.min(tabs.length-1,cur+1)])});
+  // LB is reserved for shoulder+stick record scrolling. RB without stick changes tabs.
+  once(st,g,4,()=>{});
+  once(st,g,5,()=>{if(!scrolling){const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.min(tabs.length-1,cur+1)])}});
  }
  once(st,g,9,()=>pause(m,doc));if(m!=='cabin')once(st,g,1,()=>back(m,doc));
 }
 function menu(st,g,index,doc){
  release(st);
- const cy=axis(g,1),cx=axis(g,0);
+ const cy=axis(g,1),cx=axis(g,0),shoulder=pressed(g,4)||pressed(g,5);
+ if(shoulder){
+  shoulderScroll(st,doc,Math.abs(axis(g,3))>.2?axis(g,3):cy);
+  // Suppress focus traversal when the user explicitly holds a scroll modifier.
+  if(Math.abs(cy)>.25||Math.abs(axis(g,3))>.25)return;
+ }
  if((pressed(g,13)||cy>.55)&&Date.now()-st.nav>200){focusNav(st,doc,1);st.nav=Date.now()}
  if((pressed(g,12)||cy<-.55)&&Date.now()-st.nav>200){focusNav(st,doc,-1);st.nav=Date.now()}
  if((pressed(g,14)||cx<-.55)&&Date.now()-st.nav>200){focusNav(st,doc,-1);st.nav=Date.now()}
