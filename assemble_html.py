@@ -59,5 +59,7 @@ from controller_quality_patch import patch as controller_quality
 html=controller_quality(html)
 from final_ui_patch import patch as final_ui
 html=final_ui(html)
+from release_polish import patch as release_polish
+html=release_polish(html)
 (ROOT/"index.html").write_text(html,encoding="utf-8")
 print(f"Assembled Airport Frenzy Online v2.3 / Xbox local crews with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
