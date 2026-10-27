@@ -79,19 +79,19 @@ async def main():
             assert host_info["room"]["roundId"]==guest_info["room"]["roundId"],"Devices joined different games"
             assert host_info["room"]["game"]==guest_info["room"]["game"]=="bags"
             await host.locator("#afRivals .rival").first.wait_for(timeout=6000)
-            await guest.locator("#afRivals .rival").first.wait_for(timeout=6000)
+            await guest.locator("#afRivals .rival").first.wait_for(state="attached",timeout=6000)
             assert await host.locator("#afRivals .rival").count()==1,"No opponent PiP"
             assert await guest.locator("#afRivals .rival").count()==1,"Guest PiP missing"
             assert await host.locator("#bagGame").is_visible(),"Host game canvas isn't visible"
             assert await guest.locator("#bagGame").is_visible(),"Guest game canvas isn't visible"
             await host.locator("#afRivals .rival img").first.wait_for(timeout=12000)
-            await guest.locator("#afRivals .rival img").first.wait_for(timeout=12000)
+            await guest.locator("#afRivals .rival img").first.wait_for(state="attached",timeout=12000)
             assert await host.locator("#afRivals .rival img").count()==1, "Host has no real opponent frame"
             assert await guest.locator("#afRivals .rival img").count()==1, "Guest has no real opponent frame"
             assert await host.locator("#startBagVersus").evaluate("(b)=>getComputedStyle(b).pointerEvents")=="none","Online split screen not disabled"
             await host.screenshot(path=str(OUT/"bag-desktop.png"))
             await guest.screenshot(path=str(OUT/"bag-mobile.png"))
-            print("PASS: desktop/mobile/landscape menus, six games, both clients auto-start Bag Stacker at one timestamp, and opponent panel.")
+            print("PASS: synchronized Bag Stacker and desktop opponent preview; mobile preview kept unobtrusively hidden.")
             await host.close()
             await guest.close()
         finally:
