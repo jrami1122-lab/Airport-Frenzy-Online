@@ -324,6 +324,13 @@ async def party_js(request):
 async def audio_js(request):
     return web.FileResponse(ROOT / "audio_manager.js", headers={"Cache-Control": "no-store"})
 
+async def xbox_js(request):
+    return web.FileResponse(ROOT / "xbox_controller.js", headers={"Cache-Control": "no-store"})
+
+
+async def local_crew_js(request):
+    return web.FileResponse(ROOT / "local_crew.js", headers={"Cache-Control": "no-store"})
+
 
 async def audio_file(request):
     name = request.match_info.get("name", "")
@@ -364,6 +371,8 @@ app.router.add_get("/", index)
 app.router.add_get("/health", health)
 app.router.add_get("/online_party.js", party_js)
 app.router.add_get("/audio_manager.js", audio_js)
+app.router.add_get("/xbox_controller.js", xbox_js)
+app.router.add_get("/local_crew.js", local_crew_js)
 app.router.add_get("/assets/audio/{name}.mp3", audio_file)
 app.router.add_get("/ws", websocket)
 app.on_startup.append(on_start)
