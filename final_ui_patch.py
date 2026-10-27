@@ -40,7 +40,7 @@ def patch(html):
  #afFront .afOnline{margin:6px 0 0!important}
  }
  </style>"""
- html=replace_one(html,"</head>",style+"</head>","home scrollbar and short screens")
+ html=html.replace("</head>",style+"</head>",1) # Only the main HTML head; nested game HTML has its own head.
  # The original handler also needs the complete 360-degree stick positions
  # to move freely. Snap recognition is still based on nearest canonical
  # direction, so visually placing a wand remains intuitive.
