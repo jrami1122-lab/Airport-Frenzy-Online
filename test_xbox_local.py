@@ -10,6 +10,7 @@ async def main():
    page=await browser.new_page(viewport={"width":1366,"height":768})
    errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
    await page.goto(BASE,wait_until="domcontentloaded")
+   await page.locator("#gameSelect").click()
    await page.locator("#afLocalPlay").wait_for(timeout=15000)
    await page.locator("#afPadBadge").wait_for(timeout=15000)
    assert await page.evaluate("!!window.AF_GAMEPAD&&!!window.AF_LOCAL")
@@ -18,6 +19,7 @@ async def main():
    assert await page.locator("#afLocalPlay").is_visible()
    assert await page.locator("#startVersus").evaluate("(el)=>getComputedStyle(el).display")=="none"
    assert await page.locator("#startBagVersus").evaluate("(el)=>getComputedStyle(el).display")=="none"
+   await page.locator("#afGames .afBack").click()
    await page.locator("#partyPlay").click()
    assert await page.locator("#afLocalHub").evaluate("(el)=>el.classList.contains('open')")
    await page.locator('[data-edit="cpus:1"]').click()
