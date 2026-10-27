@@ -72,6 +72,17 @@ html,body{min-width:0!important;max-width:100%!important;overflow:hidden!importa
 </style>
 """
     cabin=once(cabin,"</head>",css+"</head>","cabin media CSS")
+    # CSS custom properties retain the literal 'clamp(66px,12dvh,85px)' string.
+    # parseFloat('clamp(...)') is NaN, so mobile transform translateY(NaNpx)
+    # is dropped by the browser while desktop 104px continues to work.
+    # Always read the actual rendered .seat-row height to scroll the viewport.
+    cabin=once(
+        cabin,
+        "const track=$('#track'),rowH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH'));",
+        "const track=$('#track'),rowH=$('.seat-row')?.getBoundingClientRect().height||parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH'))||80;",
+        "rendered aircraft row height in portrait and landscape"
+    )
+
     cabin=once(cabin,"detail:{game:'cabin',reason:'complete'}",
       "detail:{game:'cabin',reason:'complete',player:window.frameElement?.id==='afLocalP2Frame'?2:1}",
       "who finished Cabin Service")
