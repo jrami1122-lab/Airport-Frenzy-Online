@@ -8,7 +8,7 @@ async def main():
   try:
    page=await browser.new_page(viewport={"width":1366,"height":768})
    await page.goto(BASE,wait_until="domcontentloaded")
-   await page.locator("#afPadBadge").wait_for(timeout=12000)
+   await page.locator("#afPadBadge").wait_for(state="attached",timeout=12000)
    menu=await page.evaluate("""()=>{
      let joins=0;window.addEventListener('af-controller-start',()=>joins++);
      const gp={connected:true,index:0,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
