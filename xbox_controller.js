@@ -91,10 +91,31 @@ function back(m,doc){
  for(let query of picks[m]||[])if(click((m==='marshal'?doc:document).querySelector(query)))return;
  if(m==='menu')click($('#afHome .afBack'));
 }
-function pause(m,doc){
+
+function clickPauseControl(m,doc){
  const look={ramp:'#pause',bags:'#bagPause',assist:'#pause',docs:'#pause',cabin:'#pause',marshal:'#pause'};
  if(click(doc.querySelector(look[m])))return;
- let host={assist:'assistHost',cabin:'cabinHost',docs:'docHost',marshal:'airHost'}[m];click($('#'+host+' .uPause'));
+ const host={assist:'assistHost',cabin:'cabinHost',docs:'docHost',marshal:'airHost'}[m];
+ click($('#'+host+' .uPause'));
+}
+function resumePause(){
+ if(!pausedContext)return;
+ const ctx=pausedContext;pausedContext=null;
+ $('#afPadPauseMenu')?.classList.remove('open');
+ clickPauseControl(ctx.m,ctx.doc);window.AF_LOCAL?.pause?.(false);
+ if(focused){focused.classList.remove('afPadFocused');focused=null}
+}
+function pause(m,doc){
+ if(pausedContext){resumePause();return}
+ pausedContext={m,doc};clickPauseControl(m,doc);window.AF_LOCAL?.pause?.(true);
+ const overlay=$('#afPadPauseMenu');
+ overlay.querySelector('#afPauseTitle').textContent='PAUSED · '+m.toUpperCase();
+ overlay.querySelector('#afPauseNote').textContent=document.body.classList.contains('afNetworkRound')
+  ?'Online match timer continues.':'Local shift timer has stopped.';
+ overlay.classList.add('open');mark(overlay.querySelector('#afPauseResume'));
+}
+function seat(st,doc,letter){
+ try{doc.dispatchEvent(new doc.defaultView.CustomEvent('af-cabin-seat',{detail:{seat:letter}}))}catch(e){}
 }
 function gameplay(st,g,index,ctx){
  const doc=ctx.doc,m=ctx.id,c=controls(g);const l=axis(g,0),y=axis(g,1),rx=axis(g,2),ry=axis(g,3);
@@ -128,8 +149,11 @@ function gameplay(st,g,index,ctx){
   once(st,g,3,()=>tap(doc,'/'));
   once(st,g,0,()=>tap(doc,' '));
  }
+ if(m==='cabin'){
+  for(const [button,letter] of [[6,'A'],[2,'B'],[3,'C'],[0,'D'],[1,'E'],[7,'F']])once(st,g,button,()=>seat(st,doc,letter));
+ }
  if(m==='bags'){once(st,g,2,()=>tap(doc,index===0?'w':'ArrowUp'))}
- if(m==='cabin'||m==='docs'){
+ if(m==='docs'){
   if(m==='docs'&&Math.abs(y)>.48&&Date.now()-st.nav>180){focusNav(st,doc,y>0?1:-1);st.nav=Date.now()}
   if(m==='docs'){
    once(st,g,2,()=>click(doc.querySelector('[data-decision="inquire"]')));
@@ -141,7 +165,7 @@ function gameplay(st,g,index,ctx){
   once(st,g,4,()=>{const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.max(0,cur-1)])});
   once(st,g,5,()=>{const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.min(tabs.length-1,cur+1)])});
  }
- once(st,g,9,()=>pause(m,doc));once(st,g,1,()=>back(m,doc));
+ once(st,g,9,()=>pause(m,doc));if(m!=='cabin')once(st,g,1,()=>back(m,doc));
 }
 function menu(st,g,index,doc){
  release(st);
@@ -153,8 +177,8 @@ function menu(st,g,index,doc){
  if(Math.abs(axis(g,2))>.2||Math.abs(axis(g,3))>.2)cursorAt(st,doc,axis(g,2),axis(g,3),false);
  once(st,g,0,()=>select(st,doc));
  once(st,g,7,()=>cursorAt(st,doc,0,0,true));
- once(st,g,1,()=>back('menu',doc));
- once(st,g,9,()=>window.dispatchEvent(new CustomEvent('af-controller-start',{detail:{index}})));
+ once(st,g,1,()=>{if(pausedContext)resumePause();else back('menu',doc)});
+ once(st,g,9,()=>{if(pausedContext)resumePause();else window.dispatchEvent(new CustomEvent('af-controller-start',{detail:{index}}))});
 }
 function tick(gps){
  const pads=Array.from(gps||[]).filter(g=>g?.connected!==false&&g?.buttons);
