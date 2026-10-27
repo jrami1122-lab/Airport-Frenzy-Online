@@ -39,13 +39,16 @@ async def main():
      window.addEventListener('keydown',e=>window.__xboxKeys.push(e.key),true);
      return window.__xboxKeys;
    }""")
-   keys=await page.evaluate("""()=>{
-     const gp={connected:true,index:0,axes:[0,-.9,0,-.9],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+   result=await page.evaluate("""()=>{
+     const gp={connected:true,index:0,axes:[.6,-.8,0,-.9],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
      gp.buttons[0].pressed=true;
      window.AF_GAMEPAD.tick([gp]);window.AF_GAMEPAD.tick([]);
-     return document.querySelector('#airFrame').contentWindow.__xboxKeys;
+     const doc=document.querySelector('#airFrame').contentDocument;
+     return {keys:doc.defaultView.__xboxKeys,left:doc.querySelector('#leftA').style.transform,right:doc.querySelector('#rightA').style.transform};
    }""")
-   assert all(k in keys for k in ('w','ArrowUp',' ')),"Xbox LS,RS,A missing in Air Marshalling: "+str(keys)
-   print("PASS Xbox: one Start press emits one join; Ramp left stick maps to WASD; marshalling two sticks map to individual wands and A submits.",flush=True)
+   assert ' ' in result["keys"],"Xbox A must submit signal: "+str(result)
+   assert "rotate(-53" in result["left"],"Left wand snapped rather than following analog angle: "+str(result)
+   assert "rotate(-90" in result["right"],"Right wand not tracking its own stick: "+str(result)
+   print("PASS Xbox: Start joins, Ramp LS moves, marshalling wands rotate at actual analog angles and A submits.",flush=True)
   finally:await browser.close()
 asyncio.run(main())
