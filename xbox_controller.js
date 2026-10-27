@@ -156,7 +156,7 @@ function gameplay(st,g,index,ctx){
   }
   if(m==='assist')keys=keys.map(k=>k.startsWith('Arrow')?k:({a:'ArrowLeft',d:'ArrowRight',w:'ArrowUp',s:'ArrowDown'}[k]));
  }else if(m==='marshal'){
-  if(index!==0){release(st);return}
+  if(index!==0&&!window.AF_DUAL?.isActive()){release(st);return}
   // Continuously stream both analog angles directly to the marshaller.
   // The rendering is 360°; signal classification happens in the game.
   if(!pressed(g,4)&&!pressed(g,5))
@@ -218,7 +218,12 @@ function tick(gps){
  const ctx=mode();
  for(let i=0;i<Math.min(4,pads.length);i++){
   const gp=pads[i],index=Number.isInteger(gp.index)?gp.index:i,st=stFor(index);
-  if(ctx.id==='menu')menu(st,gp,index,ctx.doc);else gameplay(st,gp,index,ctx);
+  if(ctx.id==='menu')menu(st,gp,index,ctx.doc);
+  else{
+    const twin=index===1?window.AF_DUAL?.doc(1):null;
+    const activeCtx=twin?{id:ctx.id,doc:twin}:ctx;
+    gameplay(st,gp,index,activeCtx);
+  }
   st.buttons=gp.buttons.map(b=>!!(b?.pressed||b?.value>.6));
  }
  for(const [idx,st] of state)if(!pads.some(p=>(Number.isInteger(p.index)?p.index:0)===idx))release(st);
