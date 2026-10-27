@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "Airport Frenzy — Ground Crew Arcade",
+  "short_name": "Airport Frenzy",
+  "description": "Six airport minigames, local Party Mode, online lobbies and tournaments.",
+  "start_url": "/?source=installed",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061729",
+  "theme_color": "#0b304b",
+  "orientation": "any",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
