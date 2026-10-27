@@ -30,13 +30,13 @@ lobbyScript.src='/online_party.js?v=balance16';
 lobbyScript.async=false;
 document.body.append(lobbyScript);
 const soundScript=document.createElement('script');
-soundScript.src='/audio_manager.js?v=sound17';soundScript.async=false;
+soundScript.src='/audio_manager.js?v=sound23';soundScript.async=false;
 document.body.append(soundScript);
 const gamepadScript=document.createElement('script');
-gamepadScript.src='/xbox_controller.js?v=gamepad22';
+gamepadScript.src='/xbox_controller.js?v=gamepad23';
 gamepadScript.async=false;document.body.append(gamepadScript);
 const localCrewScript=document.createElement('script');
-localCrewScript.src='/local_crew.js?v=crew22';
+localCrewScript.src='/local_crew.js?v=crew23';
 localCrewScript.async=false;document.body.append(localCrewScript);
 """
 html=html.replace(front_anchor,boot,1)
@@ -47,7 +47,7 @@ html=html.replace('<button id="gameSelect"><small>CHOOSE YOUR SHIFT</small>GAME 
     '<button id="gameSelect"><small>CHOOSE ANY CHALLENGE</small>🎮 CASUAL MODE <em>›</em></button>'
     '<button id="afLobbyLaunch"><small>2–4 PEOPLE · INVITE WITH CODE OR LINK</small>🌐 START A LOBBY <em>›</em></button>',1)
 html=html.replace('6 AIRPORT CHALLENGES · OFFLINE READY','6 GAMES · ONLINE ROOMS OR LOCAL PLAY',1)
-html=html.replace("MOBILE FIXED v3","XBOX CREWS v2.2",1)
+html=html.replace("MOBILE FIXED v3","XBOX CREWS v2.3",1)
 required=['id="partyPlay"','id="gameSelect"','id="afLobbyLaunch"','id="startMarshal"',"lobbyScript.src='/online_party.js?v=balance16'"]
 if any(needle not in html for needle in required):
     raise RuntimeError("Home mode / online game menu injection failed")
@@ -57,5 +57,7 @@ from audio_event_patch import patch as add_game_audio
 html=add_game_audio(html)
 from controller_quality_patch import patch as controller_quality
 html=controller_quality(html)
+from final_ui_patch import patch as final_ui
+html=final_ui(html)
 (ROOT/"index.html").write_text(html,encoding="utf-8")
-print(f"Assembled Airport Frenzy Online v2.2 / Xbox local crews with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
+print(f"Assembled Airport Frenzy Online v2.3 / Xbox local crews with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
