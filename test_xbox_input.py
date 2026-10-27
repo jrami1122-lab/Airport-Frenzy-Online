@@ -30,7 +30,7 @@ async def main():
    assert routed["mode"]=='ramp',"Wrong controller context: "+str(routed)
    await page.locator("#afShiftEnd").click()
    await page.locator("#afLocalNext").click()
-   await page.locator("#gameSelect").click()
+   await page.locator("#afGames.active").wait_for(timeout=5000)
    await page.locator("#startMarshal").click()
    frame=page.frame_locator("#airFrame")
    await frame.locator("#leftCheck").wait_for(timeout=10000)
