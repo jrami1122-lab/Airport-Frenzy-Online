@@ -10,7 +10,7 @@ const isMobile=()=>window.innerWidth<768;
 const byId=id=>games.find(g=>g[0]===id);
 const num=s=>Number.parseInt(String(s||'0').replace(/[^\d-]/g,''),10)||0;
 function score(game,p=0){try{
- if(game[0]==='ramp')return num(p?$('#afRampP2Score')?.textContent:$('#score')?.textContent);
+ if(game[0]==='ramp')return +((window.__AF_RAMP_SCORES?.()||[])[p]??(p?0:num($('#score')?.textContent)))||0;
  if(game[0]==='bags')return +(window.__AF_BAG_SCORES?.()?.[p]??(p?0:window.__AF_BAG_SCORE?.()))||0;
  const id=game[0]==='assist'&&p?'assistFrame2':{cabin:'cabinFrame',assist:'assistFrame',docs:'docFrame',marshal:'airFrame'}[game[0]];
  return Math.max(0,num($('#'+id)?.contentDocument?.querySelector('#score')?.textContent));
