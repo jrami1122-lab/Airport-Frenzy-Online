@@ -16,7 +16,9 @@ async def main():
                 page.on("pageerror",lambda e:errors.append(str(e)))
                 await page.goto(BASE,wait_until="domcontentloaded",timeout=60000)
                 await page.locator("#afLobbyLaunch").wait_for(state="attached",timeout=60000)
-                await page.locator("#afAudioToggle").wait_for(state="attached",timeout=12000)
+                await page.locator("#afOptions #afSoundTray").wait_for(state="attached",timeout=12000)
+                assert await page.locator("#afAudioToggle").count()==0,"Floating audio button must not be on the home screen"
+                assert not await page.locator("#afSoundTray").is_visible(),"Options audio settings leaked onto home screen"
                 assert await page.evaluate("!!window.AF_AUDIO && typeof AF_AUDIO.effect==='function' && typeof AF_AUDIO.music==='function'"),"Audio director not loaded"
                 assert await page.locator("#afMusicVolume").count()==1,"Music volume missing"
                 assert await page.locator("#afFxVolume").count()==1,"Effects volume missing"
