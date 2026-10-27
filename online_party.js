@@ -276,11 +276,15 @@ function stopGame(){
  }catch(e){console.warn(e)}
  $('#intro')?.classList.remove('hide');$('#afFront')?.classList.remove('playing');document.body.classList.remove('afNetworkRound');dockView();rivalsView();
 }
-function finish(){
+function finish(automatic=false){
  if(!playing||localFinished||room?.stage!=='round')return;
- if(Date.now()-startAt<3000){error('Play for at least three seconds.');open();return}
+ if(automatic!==true&&Date.now()-startAt<3000){error('Play for at least three seconds.');open();return}
  const score=measured();localFinished=true;emit({type:'finish',score});stopGame();open();
 }
+window.addEventListener('af-game-finished',ev=>{
+ if(!playing||localFinished||room?.stage!=='round'||ev.detail?.game!==room.game)return;
+ setTimeout(()=>{if(playing&&!localFinished&&room?.stage==='round')finish(true)},750);
+});
 function dockView(){
  const on=!!room&&room.stage==='round'&&playing&&!localFinished;dock.classList.toggle('visible',on);rivalsView();if(!on)return;
  dock.style.setProperty('--pcolor',mine()?.color||'#4cd3ff');
