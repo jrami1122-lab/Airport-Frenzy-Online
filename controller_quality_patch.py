@@ -11,6 +11,9 @@ def patch(html):
     start=html.index("/* Soft, generated airport-lounge music.")
     end=html.index("/* Common navigation controls for every embedded game. */",start)
     html=html[:start]+"/* Background music comes only from the uploaded audio director. */\n"+html[end:]
+    html=one(html,"tone(520,.055,.014,'triangle')",
+      "window.AF_AUDIO?.effect('ding',{gain:.18,cooldown:650})",
+      "replace obsolete synthesized menu click tone")
     html=one(html,"hud.innerHTML='<b>HOLD FULL</b> · '+a.count+' bags'",
        "window.dispatchEvent(new CustomEvent('af-game-finished',{detail:{game:'bags',reason:'hold-full'}}));hud.innerHTML='<b>HOLD FULL</b> · '+a.count+' bags'",
        "solo Bag Stacker completion")
