@@ -30,6 +30,11 @@ def patch(html):
  #afHome{overflow:hidden!important}
  #afHome .afMainButtons{overflow:visible!important}
  #afHome .afMainButtons button{max-width:100%;min-width:0!important}
+ /* Options can scroll INSIDE its dialog on shorter screens, never under Home. */
+ #afOptions{overflow-y:auto!important;align-items:safe center!important}
+ #afOptions .optionsCard{max-height:calc(100dvh - 24px)!important;overflow-y:auto!important;overscroll-behavior:contain!important}
+ #afOptions .optionsCard::-webkit-scrollbar{width:5px}
+ #afOptions .optionsCard::-webkit-scrollbar-thumb{background:#4e8ca8;border-radius:8px}
  @media(max-height:600px) and (min-width:721px){
  #afFront .afHome{bottom:9px!important;max-height:calc(100dvh - 28px)!important}
  #afFront .afKicker{margin:0 0 7px!important;font-size:clamp(10px,2.6vh,13px)!important}
