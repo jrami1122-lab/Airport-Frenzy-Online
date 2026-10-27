@@ -6,7 +6,7 @@ const colors=['#53d5ff','#ffcf54','#ff7281','#ab91ff'],DURATION=120,STORE='af-lo
 let stats={};try{stats=JSON.parse(localStorage.getItem(STORE)||'{}')||{}}catch(e){}
 let mode='party',humans=1,cpus=1,rounds=6,selection='ramp',session=null,single=null,clock=null,deadline=0,pausedAt=0,bagFinishPending=false,completedCrew=new Set(),connectedPads=new Set();
 const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(stats))}catch(e){}};
-const isMobile=()=>window.innerWidth<768;
+const isMobile=()=>window.innerWidth<768||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<650);
 const byId=id=>games.find(g=>g[0]===id);
 const num=s=>Number.parseInt(String(s||'0').replace(/[^\d-]/g,''),10)||0;
 function score(game,p=0){try{
