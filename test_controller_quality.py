@@ -17,7 +17,7 @@ async def main():
    page=await browser.new_page(viewport={"width":1366,"height":768})
    errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
    await page.goto("http://127.0.0.1:10000",wait_until="domcontentloaded",timeout=60000)
-   await page.locator("#afPadPauseMenu").wait_for(timeout=10000)
+   await page.locator("#afPadPauseMenu").wait_for(state="attached",timeout=10000)
    await page.evaluate("""()=>{window.__padSim=(buttons=[],axes=[0,0,0,0])=>{
     const gp={connected:true,index:0,axes,buttons:Array.from({length:17},(_,i)=>({pressed:buttons.includes(i),value:buttons.includes(i)?1:0}))};
     window.AF_GAMEPAD.tick([gp]);};
@@ -31,7 +31,7 @@ async def main():
    assert await page.locator("#afFront .afPanel.active").count()==1,"A did not activate highlighted menu"
    # Return to a fresh home state; the selected option may be Party or Options.
    await page.goto("http://127.0.0.1:10000",wait_until="domcontentloaded")
-   await page.locator("#afPadPauseMenu").wait_for(timeout=10000)
+   await page.locator("#afPadPauseMenu").wait_for(state="attached",timeout=10000)
    await page.evaluate("""()=>{window.__padSim=(buttons=[],axes=[0,0,0,0])=>{
     const gp={connected:true,index:0,axes,buttons:Array.from({length:17},(_,i)=>({pressed:buttons.includes(i),value:buttons.includes(i)?1:0}))};
     window.AF_GAMEPAD.tick([gp]);};}""")
