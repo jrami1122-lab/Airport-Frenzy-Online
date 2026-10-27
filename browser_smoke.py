@@ -23,7 +23,7 @@ async def main():
                 assert await page.locator("#afMusicVolume").count()==1,"Music volume missing"
                 assert await page.locator("#afFxVolume").count()==1,"Effects volume missing"
                 main_buttons=page.locator("#afFront .afMainButtons button")
-                assert await main_buttons.count()==3, "Expected exactly 3 home modes"
+                assert await main_buttons.count()==4, "Expected 3 play modes plus Install App"
                 for sel,txt in (("#partyPlay","PARTY MODE"),("#gameSelect","CASUAL MODE"),("#afLobbyLaunch","START A LOBBY")):
                     el=page.locator(sel)
                     assert txt in (await el.inner_text()),sel
