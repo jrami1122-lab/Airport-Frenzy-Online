@@ -2,7 +2,7 @@ name: Airport Frenzy UI & multiplayer smoke tests
 on:
   push:
     branches: [main]
-    paths: ["online_party.js","server.py","assemble_html.py","browser_smoke.py","test_four_crews.py","test_tournament_flow.py","test_game_balance.py","game_balance.py","audio_manager.js","audio_event_patch.py","xbox_controller.js","local_crew.js","test_xbox_local.py","game_source/**",".github/workflows/airport-qa.yml"]
+    paths: ["online_party.js","server.py","assemble_html.py","browser_smoke.py","test_four_crews.py","test_tournament_flow.py","test_game_balance.py","game_balance.py","audio_manager.js","audio_event_patch.py","xbox_controller.js","local_crew.js","test_xbox_local.py","test_xbox_input.py","game_source/**",".github/workflows/airport-qa.yml"]
   workflow_dispatch:
 jobs:
   smoke:
@@ -56,6 +56,8 @@ jobs:
           python browser_smoke.py
       - name: Verify all six minigames and Air Marshalling recognition
         run: python test_game_balance.py
+      - name: Verify emulated Xbox controller Start, sticks and marshalling signal mapping
+        run: python test_xbox_input.py
       - name: Verify Xbox Gamepad controls and customized local multiplayer
         run: python test_xbox_local.py
       - name: Save browser screenshots
