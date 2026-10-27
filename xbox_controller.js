@@ -6,14 +6,14 @@ const info={
  ramp:'LS drive/steer · RT gas · LT reverse · MENU pause · B exit',
  bags:'LS move chute · X rotate bag · RT fast belt · MENU pause · B exit',
  assist:'LS wheelchair · RT forward · LT reverse · MENU pause · B exit',
- cabin:'D-PAD aisle · RS pointer · A/RT click · LB/RB next options',
+ cabin:'D-PAD aisle · LT / X / Y | A / B / RT serve seats A-F · MENU pause',
  docs:'D-PAD/LS navigate · A/RT click · RS pointer · LB/RB tabs',
  marshal:'LS left wand · RS right wand · LB/RB forward wands · Y circle · A signal (twice for DOUBLE)'};
-const state=new Map();let connected=0,badge=null,help=null,focused=null,cursor=null,lastMode='',lastJoined=[];
+const state=new Map();let connected=0,badge=null,help=null,focused=null,cursor=null,lastMode='',lastJoined=[],pausedContext=null;
 const DEAD=.32;
 function click(e){if(e&&!e.disabled&&e.getClientRects().length){e.click();return true}return false}
 function mode(){
- if($('#afOnlineRoom.open')||$('#afLocalHub.open')||$('#afLocalResults.open'))return {id:'menu',doc:document};
+ if($('#afPadPauseMenu.open')||$('#afOnlineRoom.open')||$('#afLocalHub.open')||$('#afLocalResults.open'))return {id:'menu',doc:document};
  const lookup=[['marshal','airHost','airFrame'],['docs','docHost','docFrame'],['assist','assistHost','assistFrame'],['cabin','cabinHost','cabinFrame']];
  for(let [id,host,frame] of lookup)if($('#'+host)&&!$('#'+host).hidden){const iframe=$('#'+frame);
  try{if(iframe?.contentDocument?.body)return {id,doc:iframe.contentDocument}}catch(e){}
@@ -43,31 +43,46 @@ function controls(g){return {
  gas:pressed(g,7)||axis(g,5)>.55,brake:pressed(g,6)||axis(g,2)<-.8}};
 function buttons(doc){
  let root=doc.body;
- if(doc===document)root=$('#afLocalHub.open')||$('#afOnlineRoom.open')||$('#afLocalResults.open')||$('#afOptions:not([hidden])')||$('#afFront .afPanel.active')||$('#afFront')||doc.body;
+ if(doc===document)root=$('#afPadPauseMenu.open')||$('#afLocalHub.open')||$('#afOnlineRoom.open')||$('#afLocalResults.open')||$('#afOptions:not([hidden])')||$('#afFront .afPanel.active')||$('#afFront')||doc.body;
  return [...root.querySelectorAll('button,a[href],select,[role="button"],input:not([type=hidden])')].filter(e=>e.getClientRects().length&&!e.disabled&&getComputedStyle(e).visibility!=='hidden'&&!e.closest('#afPadHelp,#afPadBadge,#afRivals'));
+}
+
+function mark(el){
+ if(focused&&focused!==el)focused.classList?.remove('afPadFocused');
+ if(!el||!el.isConnected||el.disabled){focused=null;return}
+ focused=el;el.classList.add('afPadFocused');
+ try{el.focus({preventScroll:true})}catch(e){}
 }
 function focusNav(st,doc,dir){
  const all=buttons(doc);if(!all.length)return;
- const i=all.indexOf(focused);
- focused=all[(i<0?0:(i+dir+all.length)%all.length)];
- focused.focus({preventScroll:true});focused.scrollIntoView({block:'nearest',inline:'nearest'});
+ const index=all.indexOf(focused),next=all[index<0?0:(index+dir+all.length)%all.length];
+ mark(next);next.scrollIntoView({block:'nearest',inline:'nearest'});st.hovered=null;
+}
+function pointerTarget(st,doc){
+ if(!st.cur||st.cur.ownerDocument!==doc)return null;
+ st.cur.style.display='none';const el=doc.elementFromPoint(st.px,st.py);st.cur.style.display='';
+ return el?.closest?.('button,a[href],select,[role="button"],input:not([type=hidden]),.bubble')||null;
 }
 function cursorAt(st,doc,x,y,fire){
  if(!st.cur||st.cur.ownerDocument!==doc||!st.cur.isConnected){
   st.cur=doc.createElement('div');st.cur.id='afPadCursor';
-  st.cur.style.cssText='position:fixed;z-index:2147480000;width:15px;height:15px;background:#53baf577;border:2px solid #ffffad;border-radius:50%;box-shadow:0 0 7px #049bff;pointer-events:none;transform:translate(-50%,-50%)';
+  st.cur.style.cssText='position:fixed;z-index:2147480000;width:19px;height:19px;background:#45c5e984;border:3px solid #ffe27a;border-radius:50%;box-shadow:0 0 0 2px #071c2b,0 0 13px #ffe16a;pointer-events:none;transform:translate(-50%,-50%)';
   doc.body.append(st.cur);st.px=doc.defaultView.innerWidth/2;st.py=doc.defaultView.innerHeight/2;
  }
  st.px=Math.max(6,Math.min(doc.defaultView.innerWidth-6,st.px+x*18));
  st.py=Math.max(6,Math.min(doc.defaultView.innerHeight-6,st.py+y*18));
  st.cur.style.left=st.px+'px';st.cur.style.top=st.py+'px';
- if(fire){
-  st.cur.style.display='none';
-  const target=doc.elementFromPoint(st.px,st.py);
-  st.cur.style.display='';
-  if(target){const btn=target.closest('button,a,[role="button"],input');if(btn)click(btn);
-  else target.dispatchEvent(new doc.defaultView.MouseEvent('click',{bubbles:true,cancelable:true,clientX:st.px,clientY:st.py}));}
- }
+ st.hovered=pointerTarget(st,doc);
+ if(st.hovered)mark(st.hovered);
+ if(fire&&st.hovered)return click(st.hovered);
+ return false;
+}
+function select(st,doc){
+ const all=buttons(doc);
+ if(st.hovered?.isConnected&&st.hovered.getClientRects().length){mark(st.hovered);return click(st.hovered)}
+ if(focused&&all.includes(focused))return click(focused);
+ if(all.length){mark(all[0]);return click(all[0])}
+ return cursorAt(st,doc,0,0,true);
 }
 function back(m,doc){
  const picks={menu:['#afLocalBack','#afOnlineRoomClose','.afBack','#afBack'],
@@ -121,7 +136,7 @@ function gameplay(st,g,index,ctx){
    once(st,g,3,()=>click(doc.querySelector('[data-decision="report"]')));
   }
   if(Math.abs(rx)>.12||Math.abs(ry)>.12)cursorAt(st,doc,rx,ry,false);
-  once(st,g,0,()=>{if(!click(doc.activeElement))cursorAt(st,doc,0,0,true)});
+  once(st,g,0,()=>select(st,doc));
   once(st,g,7,()=>cursorAt(st,doc,0,0,true));
   once(st,g,4,()=>{const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.max(0,cur-1)])});
   once(st,g,5,()=>{const tabs=[...doc.querySelectorAll('.tab:not(.locked)')],cur=tabs.indexOf(doc.querySelector('.tab.active'));click(tabs[Math.min(tabs.length-1,cur+1)])});
@@ -136,7 +151,7 @@ function menu(st,g,index,doc){
  if((pressed(g,14)||cx<-.55)&&Date.now()-st.nav>200){focusNav(st,doc,-1);st.nav=Date.now()}
  if((pressed(g,15)||cx>.55)&&Date.now()-st.nav>200){focusNav(st,doc,1);st.nav=Date.now()}
  if(Math.abs(axis(g,2))>.2||Math.abs(axis(g,3))>.2)cursorAt(st,doc,axis(g,2),axis(g,3),false);
- once(st,g,0,()=>{if(!click(doc.activeElement))cursorAt(st,doc,0,0,true)});
+ once(st,g,0,()=>select(st,doc));
  once(st,g,7,()=>cursorAt(st,doc,0,0,true));
  once(st,g,1,()=>back('menu',doc));
  once(st,g,9,()=>window.dispatchEvent(new CustomEvent('af-controller-start',{detail:{index}})));
@@ -169,7 +184,7 @@ function setup(){
  document.body.append(help);badge.onclick=()=>{help.style.display=help.style.display==='none'?'block':'none';help.querySelector('#afPadGuide').textContent=info[mode().id]};
  help.querySelector('#afPadClose').onclick=()=>help.style.display='none';
  const style=document.createElement('style');
- style.textContent='.afPadFocused{outline:3px solid #ffd45d!important;outline-offset:2px!important} @media(max-width:650px){#afPadBadge{top:auto!important;bottom:4px!important;right:4px!important;font-size:9px!important;opacity:.8}}';
+ style.textContent='.afPadFocused,.afPadFocused:focus{outline:4px solid #ffda57!important;outline-offset:3px!important;box-shadow:0 0 0 5px #07273e,0 0 22px 7px #ffc847ad!important;filter:brightness(1.22)!important;position:relative;z-index:5} @media(max-width:650px){#afPadBadge{top:auto!important;bottom:4px!important;right:4px!important;font-size:9px!important;opacity:.8}}';
  document.head.append(style);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
