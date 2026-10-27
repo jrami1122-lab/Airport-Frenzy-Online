@@ -201,7 +201,14 @@ function install(){
   const current=session?.games?.[session.round]||single;
   if(!current||current[0]!==ev.detail?.game)return;
   // Briefly show the game's own completion message before recording the result.
-  setTimeout(()=>{if(clock&&!pausedAt)endShift()},850);
+  setTimeout(()=>{
+    if(!clock||pausedAt)return;
+    if(ev.detail?.game==='marshal'){
+      const over=$('#airFrame')?.contentDocument?.querySelector('#over');
+      if(!over||over.classList.contains('hidden'))return;
+    }
+    endShift();
+  },850);
  });
  window.addEventListener('af-controller-start',e=>{
   if(isMobile())return;connectedPads.add(e.detail.index);
