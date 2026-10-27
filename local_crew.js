@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s);
 const games=[['ramp','Ramp Runner','🚜','#startSolo','#startVersus'],['bags','Bag Stacker','🧳','#startBagSolo','#startBagVersus'],['cabin','Flight Attendant','🛫','#startCabin'],['assist','Terminal Assist','♿','#startAssist','#startAssistVersus'],['docs','Document Control','🛂','#startDocsSolo'],['marshal','Air Marshalling','🦺','#startMarshal']];
 const colors=['#53d5ff','#ffcf54','#ff7281','#ab91ff'],DURATION=120,STORE='af-local-statistics-v2';
 let stats={};try{stats=JSON.parse(localStorage.getItem(STORE)||'{}')||{}}catch(e){}
-let mode='party',humans=1,cpus=1,rounds=6,selection='ramp',session=null,single=null,clock=null,deadline=0,connectedPads=new Set();
+let mode='party',humans=1,cpus=1,rounds=6,selection='ramp',session=null,single=null,clock=null,deadline=0,pausedAt=0,connectedPads=new Set();
 const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(stats))}catch(e){}};
 const isMobile=()=>window.innerWidth<768;
 const byId=id=>games.find(g=>g[0]===id);
@@ -35,13 +35,20 @@ function statsView(){
 }
 function timer(showLabel){
  const e=$('#afShiftClock');e.classList.add('visible');$('#afShiftLabel').textContent=showLabel;
- deadline=Date.now()+DURATION*1000;clearInterval(clock);clock=setInterval(()=>{
+ deadline=Date.now()+DURATION*1000;pausedAt=0;clearInterval(clock);clock=setInterval(()=>{
+  if(pausedAt)return;
   const v=Math.max(0,Math.ceil((deadline-Date.now())/1000));
   $('#afShiftTime').textContent=Math.floor(v/60)+':'+String(v%60).padStart(2,'0');
   if(!v)endShift();
  },200);
 }
-function clearTimer(){clearInterval(clock);clock=null;$('#afShiftClock').classList.remove('visible')}
+function clearTimer(){clearInterval(clock);clock=null;pausedAt=0;$('#afShiftClock').classList.remove('visible')}
+function pauseShift(value){
+ if(!clock)return false;
+ if(value&&!pausedAt)pausedAt=Date.now();
+ else if(!value&&pausedAt){deadline+=Date.now()-pausedAt;pausedAt=0}
+ return true;
+}
 function leaveGame(){
  if($('#bagGame')&&!$('#bagGame').hidden)$('#bagMenu')?.click();
  else if($('#assistHost')&&!$('#assistHost').hidden)$('#assistMenu')?.click();
@@ -185,10 +192,17 @@ function install(){
  $('#afLocalControllers').onclick=()=>{if(!isMobile()){humans=Math.min(4,humans+1);cpus=Math.min(cpus,4-humans);setup()}};
  $('#partyPlay')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();mode='party';humans=1;cpus=1;open('party')},true);
  document.addEventListener('click',e=>{
-  if(session||single||$('#afOnlineRoom.open')||$('#afLocalHub.open')||$('#afLocalResults.open'))return;
+  if(session||single||document.body.classList.contains('afNetworkRound')||$('#afOnlineRoom.open')||$('#afLocalHub.open')||$('#afLocalResults.open'))return;
   const b=e.target.closest('button'),g=b&&games.find(x=>x[3].slice(1)===b.id);
   if(g&&!$('#afFront')?.classList.contains('playing')){single=g;timer('P1 · '+g[1]);}
  },true);
+ window.addEventListener('af-game-finished',ev=>{
+  if(!clock||document.body.classList.contains('afNetworkRound'))return;
+  const current=session?.games?.[session.round]||single;
+  if(!current||current[0]!==ev.detail?.game)return;
+  // Briefly show the game's own completion message before recording the result.
+  setTimeout(()=>{if(clock&&!pausedAt)endShift()},850);
+ });
  window.addEventListener('af-controller-start',e=>{
   if(isMobile())return;connectedPads.add(e.detail.index);
   if($('#afLocalHub.open')){humans=Math.max(humans,Math.min(4,connectedPads.size));setup()}
@@ -196,5 +210,5 @@ function install(){
  statsView();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-window.AF_LOCAL={open,start,status:()=>({humans,cpus,rounds,inParty:!!session,inCasual:!!single}),games,stats:()=>stats};
+window.AF_LOCAL={open,start,pause:pauseShift,finish:()=>{if(!clock)return false;endShift();return true},status:()=>({humans,cpus,rounds,inParty:!!session,inCasual:!!single,paused:!!pausedAt}),games,stats:()=>stats};
 })();
