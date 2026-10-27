@@ -209,7 +209,20 @@ function setup(){
  help.querySelector('#afPadClose').onclick=()=>help.style.display='none';
  const style=document.createElement('style');
  style.textContent='.afPadFocused,.afPadFocused:focus{outline:4px solid #ffda57!important;outline-offset:3px!important;box-shadow:0 0 0 5px #07273e,0 0 22px 7px #ffc847ad!important;filter:brightness(1.22)!important;position:relative;z-index:5} @media(max-width:650px){#afPadBadge{top:auto!important;bottom:4px!important;right:4px!important;font-size:9px!important;opacity:.8}}';
+ style.textContent+='#afPadPauseMenu{display:none;position:fixed;inset:0;z-index:20000;align-items:center;justify-content:center;background:#071523de;padding:15px;font:15px system-ui;color:#fff}#afPadPauseMenu.open{display:flex}#afPadPauseMenu .padCard{background:#103149;max-width:400px;width:100%;border:2px solid #67c8ee;border-radius:16px;padding:23px;text-align:center;box-shadow:0 12px 50px #000a}#afPadPauseMenu .padCard button{display:block;width:100%;min-height:45px;margin:8px 0;background:#1d5069;color:#fff;border:1px solid #6fb9d5;border-radius:10px;font:bold 16px system-ui;cursor:pointer}#afPadPauseMenu small{color:#aaccda}';
  document.head.append(style);
+
+ const modal=document.createElement('section');modal.id='afPadPauseMenu';
+ modal.innerHTML='<div class="padCard"><h2 id="afPauseTitle">PAUSED</h2><p id="afPauseNote">Local shift timer is paused.</p><button id="afPauseResume">▶ RESUME (A)</button><button id="afPauseHelp">🎮 CONTROLS</button><button id="afPauseFinish">🏁 END SHIFT & SAVE</button><small>D-pad / left stick to navigate · A select · B or Menu resume</small></div>';
+ document.body.append(modal);
+ modal.querySelector('#afPauseResume').onclick=resumePause;
+ modal.querySelector('#afPauseHelp').onclick=()=>{help.style.display='block';help.querySelector('#afPadGuide').textContent=info[pausedContext?.m||'menu']};
+ modal.querySelector('#afPauseFinish').onclick=()=>{
+  const ctx=pausedContext;resumePause();
+  if(window.AF_LOCAL?.finish?.())return;
+  if(document.body.classList.contains('afNetworkRound'))click($('#afDockFinish'));
+  else if(ctx)back(ctx.m,ctx.doc);
+ };
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 window.AF_GAMEPAD={tick,status:()=>({connected,mode:lastMode}),maps:info};
