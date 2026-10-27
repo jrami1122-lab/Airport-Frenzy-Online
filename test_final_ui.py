@@ -15,7 +15,7 @@ async def main():
    assert await home.locator('#afOptions #afMusicVolume').count()==1,'Music slider not inside Options'
    assert await home.locator('#afOptions #afFxVolume').count()==1,'Effects slider not inside Options'
    assert await home.locator('#afAudioToggle').count()==0,'Old floating Audio toggle returned'
-   assert await home.locator('#afFront .afMainButtons button').count()==3
+   assert await home.locator('#afFront .afMainButtons button').count()==4
    await home.evaluate("""()=>{
     const g={index:0,connected:true,axes:[0,0,0,0],
       buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
