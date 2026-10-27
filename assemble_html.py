@@ -32,6 +32,12 @@ document.body.append(lobbyScript);
 const soundScript=document.createElement('script');
 soundScript.src='/audio_manager.js?v=sound17';soundScript.async=false;
 document.body.append(soundScript);
+const gamepadScript=document.createElement('script');
+gamepadScript.src='/xbox_controller.js?v=gamepad21';
+gamepadScript.async=false;document.body.append(gamepadScript);
+const localCrewScript=document.createElement('script');
+localCrewScript.src='/local_crew.js?v=crew21';
+localCrewScript.async=false;document.body.append(localCrewScript);
 """
 html=html.replace(front_anchor,boot,1)
 html=html.replace(external,'<!-- online menu dynamically loaded by front bootstrap -->',1)
@@ -41,7 +47,7 @@ html=html.replace('<button id="gameSelect"><small>CHOOSE YOUR SHIFT</small>GAME 
     '<button id="gameSelect"><small>CHOOSE ANY CHALLENGE</small>🎮 CASUAL MODE <em>›</em></button>'
     '<button id="afLobbyLaunch"><small>2–4 PEOPLE · INVITE WITH CODE OR LINK</small>🌐 START A LOBBY <em>›</em></button>',1)
 html=html.replace('6 AIRPORT CHALLENGES · OFFLINE READY','6 GAMES · ONLINE ROOMS OR LOCAL PLAY',1)
-html=html.replace("MOBILE FIXED v3","SIMON MARSHALLING v1.7",1)
+html=html.replace("MOBILE FIXED v3","XBOX CREWS v2.1",1)
 required=['id="partyPlay"','id="gameSelect"','id="afLobbyLaunch"','id="startMarshal"',"lobbyScript.src='/online_party.js?v=balance16'"]
 if any(needle not in html for needle in required):
     raise RuntimeError("Home mode / online game menu injection failed")
@@ -50,4 +56,4 @@ html=balance_games(html)
 from audio_event_patch import patch as add_game_audio
 html=add_game_audio(html)
 (ROOT/"index.html").write_text(html,encoding="utf-8")
-print(f"Assembled Airport Frenzy Online v1.7 / Simon Says marshalling with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
+print(f"Assembled Airport Frenzy Online v2.1 / Xbox local crews with {len(parts)} chunks, all six games, standalone online Party Play ({len(html):,} characters).")
