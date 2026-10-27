@@ -95,8 +95,8 @@ html,body{min-width:0!important;max-width:100%!important;overflow:hidden!importa
 }
 """
     html=once(html,src,collision+src,"ramp rival tail physics")
-    html=once(html,"collisionBody(p);\n for(const c of [...loose])",
-      "collisionBody(p);rivalTailContact(p);\n for(const c of [...loose])",
+    html=once(html,"collisionBody(p);",
+      "collisionBody(p);rivalTailContact(p);",
       "ramp collision application")
     # Avoid overlaid mini-game panels on mobile in all orientations.
     polish="""<style id="af-release-overflow">
