@@ -30,6 +30,9 @@ function finishRampShift(){
     s=replace_one(s,"spawnClock=0;repairClock=0;flyover=null;flyClock=0;nextFly=rnd(15,60);players=","spawnClock=0;repairClock=0;shiftClock=0;flyover=null;flyClock=0;nextFly=rnd(15,60);players=","ramp timer reset")
     s=replace_one(s,"function scoreOf(p){return p.carts.length*1000+p.bonuses*100-p.lostCarts*500-p.livesLost*100-(p.eliminated?5000:0)}",
     "function scoreOf(p){return Math.max(0,p.banked+p.carts.length*65+p.bonuses*60-p.lostCarts*15-p.livesLost*35)}","bank-safe ramp score")
+    s=replace_one(s,"function scoreBreakdown(p){",
+    "window.__AF_RAMP_SCORES=()=>players.map(scoreOf);function scoreBreakdown(p){",
+    "make both tug scores available for local tournaments")
     s=replace_one(s,"function scoreBreakdown(p){return p.id+' '+scoreOf(p)+' ('+p.carts.length+' carts, '+p.bonuses+' bonuses, '+p.lostCarts+' lost)'}",
     "function scoreBreakdown(p){return p.id+' '+scoreOf(p)+' ('+p.delivered+' banked carts, '+p.carts.length+' on tug, '+p.lostCarts+' lost)'}","ramp breakdown")
     s=replace_one(s,"p.tier++;message(p.id+' SPEED TIER '","p.tier=Math.min(5,p.tier+1);message(p.id+' SPEED TIER '","ramp speed ceiling")
@@ -64,6 +67,13 @@ function finishRampShift(){
     s=replace_one(s,"function updateHud(){if(mode==='solo')",
     "function updateHud(){ui.mode.textContent='SHIFT '+Math.floor(Math.max(0,SHIFT_SECONDS-shiftClock)/60)+':'+String(Math.floor(Math.max(0,SHIFT_SECONDS-shiftClock)%60)).padStart(2,'0')+' · BANK 6–10 CARTS';if(mode==='solo')","timer HUD")
     return s
+
+def patch_bag(s):
+    return replace_one(s,
+      "window.__AF_BAG_SCORE=()=>boards?.[0]?.score??0;",
+      "window.__AF_BAG_SCORE=()=>boards?.[0]?.score??0;window.__AF_BAG_SCORES=()=>boards.map(b=>b.score);",
+      "expose two physically separate bag stacker scores")
+
 
 def patch_cabin(s):
     pattern=r"(const CABIN_SERVICE_HTML=')([A-Za-z0-9+/=]+)(')"
@@ -234,4 +244,4 @@ addEventListener('resize',resetPose);resetPose();""",
     return s
 
 def patch(html):
-    return patch_marshalling(patch_cabin(patch_ramp(html)))
+    return patch_marshalling(patch_cabin(patch_bag(patch_ramp(html))))
