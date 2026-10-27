@@ -23,6 +23,15 @@ function statsView(){
  const el=$('#afLocalStats');if(!el)return;
  const a=Object.entries(stats).filter(x=>x[1]?.plays).sort((a,b)=>(b[1].date||'').localeCompare(a[1].date||'')).slice(0,6);
  el.innerHTML=a.length?a.map(([n,p])=>'<div><b>'+n+'</b><small>BEST '+p.best+' · '+p.plays+' SHIFTS</small></div>').join(''):'<p>Play a shift to save your first result.</p>';
+ const honors=(stats.trophies||[]).slice(-3).reverse();
+ if(honors.length)el.innerHTML+='<div class="afLocalHonors"><b>🏆 EMPLOYEE OF THE MONTH</b>'+honors.map(h=>'<small>'+h.winner+' · '+h.points+' tournament pts</small>').join('')+'</div>';
+ const casual=$('#afCasualScores');
+ if(casual){
+  casual.innerHTML='<strong>🏅 CAREER RECORDS</strong>'+games.map(g=>{
+    const x=stats['P1 / '+g[1]];
+    return '<span>'+g[2]+' '+g[1]+' <b>'+(x?'Best '+x.best:'No record')+'</b></span>';
+  }).join('');
+ }
 }
 function timer(showLabel){
  const e=$('#afShiftClock');e.classList.add('visible');$('#afShiftLabel').textContent=showLabel;
@@ -148,11 +157,13 @@ function install(){
  '#afLocalControllers{color:#8fdbf4;border:1px dashed #5e9caf;padding:10px;text-align:center;border-radius:7px;cursor:pointer}'+
  '#afLocalRoundGroup button{margin-right:7px}#afLocalStart{display:block;width:100%;background:#147d60;font-size:19px;margin-top:10px}#afLocalGameSelect{width:100%}'+
  '#afLocalStats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px;font-size:11px}#afLocalStats>div{background:#0d2130;padding:6px;border-radius:5px}#afLocalStats small{display:block;color:#87c7d4}'+
+ '#afLocalStats .afLocalHonors{grid-column:1/-1;border:1px solid #e1c66d;background:#423c2a}#afCasualScores{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;padding:10px;color:#bfdbef;background:#092133;border-radius:11px;font:12px system-ui}#afCasualScores>strong{grid-column:1/-1;color:#ffe28a}#afCasualScores span{display:flex;justify-content:space-between;gap:7px;border-top:1px solid #224862;padding:5px 0}#afCasualScores b{color:#fff} @media(max-width:767px){#afCasualScores{grid-template-columns:1fr}}'+
  '.afLocalStanding{display:flex;justify-content:space-between;background:#15384b;border-left:5px solid #57c3e1;padding:9px;margin:5px 0}.afLocalStanding small{font-size:10px;opacity:.7}.afLocalTrophy{text-align:center;font-size:66px}'+
  '#afLocalResults button{display:block;margin:16px auto 0;background:#217861}'+
  '#afShiftClock{display:none;position:fixed;z-index:3200;bottom:10px;right:10px;left:auto;transform:none;pointer-events:none;background:#082b3df5;color:white;border:1px solid #70d5e9;border-radius:12px;padding:5px 12px;text-align:center;font:12px system-ui}#afShiftClock.visible{display:block}#afShiftClock b{font-size:22px;color:#ffe18e}#afShiftClock small{display:block}#afShiftClock button{font-size:10px;pointer-events:auto}'+
  '@media(max-width:767px){#afLocalPlay{display:none!important}#afGameMount .arcadeGrid{grid-template-columns:1fr}#afLocalRoster{grid-template-columns:repeat(2,1fr)}.afLocalPanel{padding:11px}}';
  document.head.append(css);
+ const casualRecord=document.createElement('div');casualRecord.id='afCasualScores';$('#afGameMount')?.append(casualRecord);
  const hdr=$('#afGames .afPanelHead');const link=document.createElement('button');link.id='afLocalPlay';link.textContent='👥 LOCAL MULTIPLAYER';hdr.append(link);link.onclick=()=>{if(!isMobile())open('casual')};
  const hub=document.createElement('div');hub.id='afLocalHub';
  hub.innerHTML='<div class="afLocalPanel"><div class="afLocalTop"><h2 id="afLocalHeading">PARTY MODE</h2><button id="afLocalBack">✕ CLOSE</button></div>'+
