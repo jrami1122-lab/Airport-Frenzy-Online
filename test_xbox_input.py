@@ -45,7 +45,7 @@ async def main():
      gp.buttons[0].pressed=true;
      window.AF_GAMEPAD.tick([gp]);window.AF_GAMEPAD.tick([]);
      const doc=document.querySelector('#airFrame').contentDocument;
-     return {keys:doc.defaultView.__xboxKeys,left:doc.querySelector('#leftA').style.transform,right:doc.querySelector('#rightA').style.transform};
+     return {keys:doc.defaultView.__xboxKeys,left:doc.querySelector('#leftArm').style.transform,right:doc.querySelector('#rightArm').style.transform};
    }""")
    assert ' ' in result["keys"],"Xbox A must submit signal: "+str(result)
    assert "rotate(-53" in result["left"],"Left wand snapped rather than following analog angle: "+str(result)
