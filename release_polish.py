@@ -72,7 +72,14 @@ html,body{min-width:0!important;max-width:100%!important;overflow:hidden!importa
 </style>
 """
     cabin=once(cabin,"</head>",css+"</head>","cabin media CSS")
+    cabin=once(cabin,"detail:{game:'cabin',reason:'complete'}",
+      "detail:{game:'cabin',reason:'complete',player:window.frameElement?.id==='afLocalP2Frame'?2:1}",
+      "who finished Cabin Service")
+
     html=html[:m.start(2)]+base64.b64encode(cabin.encode()).decode()+html[m.end(2):]
+    html=once(html,"detail:{game:'marshal',reason:'wrong-signal'}",
+       "detail:{game:'marshal',reason:'wrong-signal',player:window.frameElement?.id==='afLocalP2Frame'?2:1}",
+       "who failed Air Marshalling")
     # Native opponent cart / tow-train collision, with sparks and real lost carts.
     src="function updatePlayer(p,dt){if(!p.alive)return;"
     collision="""function rivalTailContact(p){
