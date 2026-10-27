@@ -34,6 +34,7 @@ async def main():
    await page.locator("#startMarshal").click()
    frame=page.frame_locator("#airFrame")
    await frame.locator("#leftCheck").wait_for(timeout=10000)
+   await frame.locator("body").evaluate("(el)=>window.__AF_MARSHAL_TEST.setup('cutengine')")
    routed=await frame.locator("body").evaluate("""()=>{
      window.__xboxKeys=[];
      window.addEventListener('keydown',e=>window.__xboxKeys.push(e.key),true);
