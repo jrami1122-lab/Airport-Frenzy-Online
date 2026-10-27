@@ -53,7 +53,7 @@ html,body{min-width:0!important;max-width:100%!important;overflow:hidden!importa
  .app{height:100dvh!important;grid-template-rows:auto minmax(0,1fr) auto!important}
  .game-area{height:100%!important;min-height:0!important;padding:3px!important;
  grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important}
- .cabin-shell{max-width:min(680px,94vw)!important;min-height:0!important;
+ .cabin-shell{width:min(680px,94vw)!important;min-width:min(680px,94vw)!important;max-width:min(680px,94vw)!important;justify-self:center!important;min-height:0!important;
  border-width:2px!important}
  .cabin-viewport{inset:3px clamp(5px,2vw,12px)!important}
  .seat-row{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(11px,6%) repeat(3,minmax(0,1fr))!important;
