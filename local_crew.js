@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s);
 const games=[['ramp','Ramp Runner','🚜','#startSolo','#startVersus'],['bags','Bag Stacker','🧳','#startBagSolo','#startBagVersus'],['cabin','Flight Attendant','🛫','#startCabin'],['assist','Terminal Assist','♿','#startAssist','#startAssistVersus'],['docs','Document Control','🛂','#startDocsSolo'],['marshal','Air Marshalling','🦺','#startMarshal']];
 const colors=['#53d5ff','#ffcf54','#ff7281','#ab91ff'],DURATION=120,STORE='af-local-statistics-v2';
 let stats={};try{stats=JSON.parse(localStorage.getItem(STORE)||'{}')||{}}catch(e){}
-let mode='party',humans=1,cpus=1,rounds=6,selection='ramp',session=null,single=null,clock=null,deadline=0,pausedAt=0,bagFinishPending=false,connectedPads=new Set();
+let mode='party',humans=1,cpus=1,rounds=6,selection='ramp',session=null,single=null,clock=null,deadline=0,pausedAt=0,bagFinishPending=false,completedCrew=new Set(),connectedPads=new Set();
 const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(stats))}catch(e){}};
 const isMobile=()=>window.innerWidth<768;
 const byId=id=>games.find(g=>g[0]===id);
@@ -36,7 +36,7 @@ function statsView(){
 }
 function timer(showLabel){
  const e=$('#afShiftClock');e.classList.add('visible');$('#afShiftLabel').textContent=showLabel;
- deadline=Date.now()+DURATION*1000;pausedAt=0;bagFinishPending=false;clearInterval(clock);clock=setInterval(()=>{
+ deadline=Date.now()+DURATION*1000;pausedAt=0;bagFinishPending=false;completedCrew.clear();clearInterval(clock);clock=setInterval(()=>{
   if(pausedAt)return;
   // A full hold is a terminal game state, not a reason to run the clock down.
   // Poll the actual Matter.js board state as a fallback to the finish event.
@@ -210,10 +210,16 @@ function install(){
   if(!clock||document.body.classList.contains('afNetworkRound'))return;
   const current=session?.games?.[session.round]||single;
   if(!current||current[0]!==ev.detail?.game)return;
+  // Side-by-side browser minigames are independent. Wait for BOTH human
+  // completions; a failure of P1 must not interrupt P2's timer or score.
+  if(session?.shared&&window.AF_DUAL?.isActive()){
+    completedCrew.add(ev.detail?.player===2?2:1);
+    if(completedCrew.size<2)return;
+  }
   // Briefly show the game's own completion message before recording the result.
   setTimeout(()=>{
     if(!clock||pausedAt)return;
-    if(ev.detail?.game==='marshal'){
+    if(ev.detail?.game==='marshal'&&!session?.shared){
       const over=$('#airFrame')?.contentDocument?.querySelector('#over');
       if(!over||over.classList.contains('hidden'))return;
     }
