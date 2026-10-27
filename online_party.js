@@ -310,6 +310,11 @@ setInterval(()=>{
 },100);
 setInterval(()=>{
  if(room?.stage==='round'&&playing&&!localFinished){
+   if(room.game==='bags'){
+     const b=window.__AF_BAG_STATE?.();
+     const done=b?.boards?.length&&(b.versus?b.boards.every(x=>x.gameOver):b.boards[0].gameOver);
+     if(done){finish(true);return}
+   }
    emit({type:'score',score:measured()});
    sendPreview();dockView();
  }
