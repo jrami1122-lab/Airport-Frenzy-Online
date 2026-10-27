@@ -16,6 +16,31 @@ def patch(html):
  for(const b of boards)""","bag one-shot end")
  html=replace_one(html,"function reset(v=false){versus=v;",
    "function reset(v=false){window.__afBagEndNotified=false;versus=v;","reset bag end guard")
+ # Local-only deterministic QA can simulate a full hold without modifying
+ # real game rules or exposing cheats to production users.
+ html=replace_one(html,"window.__AF_BAG_STATE=()=>",
+  """if(location.hostname==='127.0.0.1'||location.hostname==='localhost')
+ window.__AF_TEST_BAG_END=(i=0)=>{if(boards[i]){boards[i].gameOver=true;checkEnd();}};
+ window.__AF_BAG_STATE=()=>""","QA full hold hook")
+ # Keep home menu contained; no browser-native scrollbar when focused with Xbox.
+ style="""<style id="afNoHomeScroll">
+ html,body{overflow-x:hidden!important;overscroll-behavior:none!important}
+ #afFront,#afHome,#afHome .afMainButtons{scrollbar-width:none!important;overscroll-behavior:contain!important}
+ #afFront::-webkit-scrollbar,#afHome::-webkit-scrollbar,#afHome .afMainButtons::-webkit-scrollbar{display:none!important}
+ #afHome{overflow:hidden!important}
+ #afHome .afMainButtons{overflow:visible!important}
+ #afHome .afMainButtons button{max-width:100%;min-width:0!important}
+ @media(max-height:600px) and (min-width:721px){
+ #afFront .afHome{bottom:9px!important;max-height:calc(100dvh - 28px)!important}
+ #afFront .afKicker{margin:0 0 7px!important;font-size:clamp(10px,2.6vh,13px)!important}
+ #afFront .afMainButtons{gap:6px!important}
+ #afFront .afMainButtons button{min-height:60px!important;padding:8px 50px 8px 14px!important;
+ font-size:clamp(20px,5vh,30px)!important}
+ #afFront .afMainButtons button small{font-size:9px!important}
+ #afFront .afOnline{margin:6px 0 0!important}
+ }
+ </style>"""
+ html=replace_one(html,"</head>",style+"</head>","home scrollbar and short screens")
  # The original handler also needs the complete 360-degree stick positions
  # to move freely. Snap recognition is still based on nearest canonical
  # direction, so visually placing a wand remains intuitive.
