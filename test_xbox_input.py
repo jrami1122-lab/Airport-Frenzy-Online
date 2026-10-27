@@ -1,0 +1,50 @@
+"""Emulated Xbox standard gamepads to verify actual keyboard-compat mappings in Chromium."""
+import asyncio
+from playwright.async_api import async_playwright
+BASE="http://127.0.0.1:10000"
+async def main():
+ async with async_playwright() as p:
+  browser=await p.chromium.launch(headless=True,args=["--no-sandbox","--disable-dev-shm-usage"])
+  try:
+   page=await browser.new_page(viewport={"width":1366,"height":768})
+   await page.goto(BASE,wait_until="domcontentloaded")
+   await page.locator("#afPadBadge").wait_for(timeout=12000)
+   menu=await page.evaluate("""()=>{
+     let joins=0;window.addEventListener('af-controller-start',()=>joins++);
+     const gp={connected:true,index:0,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+     gp.buttons[9].pressed=true;window.AF_GAMEPAD.tick([gp]);window.AF_GAMEPAD.tick([gp]);
+     return {joins,connected:window.AF_GAMEPAD.status().connected};
+   }""")
+   assert menu["joins"]==1,"Xbox Menu/Start should join once per press"
+   assert menu["connected"]==1,"Controller detection failed"
+   await page.locator("#gameSelect").click()
+   await page.locator("#startSolo").click()
+   routed=await page.evaluate("""()=>{
+      const inputs=[];
+      window.addEventListener('keydown',e=>inputs.push(e.key),true);
+      const gp={connected:true,index:0,axes:[-.8,-.8,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+      window.AF_GAMEPAD.tick([gp]);window.AF_GAMEPAD.tick([]);
+      return {inputs,mode:window.AF_GAMEPAD.status().mode};
+   }""")
+   assert 'a' in routed["inputs"] and 'w' in routed["inputs"],"Left stick not mapped to Ramp Runner WASD: "+str(routed)
+   assert routed["mode"]=='ramp',"Wrong controller context: "+str(routed)
+   await page.locator("#rampMain").click()
+   await page.locator("#gameSelect").click()
+   await page.locator("#startMarshal").click()
+   frame=page.frame_locator("#airFrame")
+   await frame.locator("#leftCheck").wait_for(timeout=10000)
+   routed=await frame.locator("body").evaluate("""()=>{
+     window.__xboxKeys=[];
+     window.addEventListener('keydown',e=>window.__xboxKeys.push(e.key),true);
+     return window.__xboxKeys;
+   }""")
+   keys=await page.evaluate("""()=>{
+     const gp={connected:true,index:0,axes:[0,-.9,0,-.9],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+     gp.buttons[0].pressed=true;
+     window.AF_GAMEPAD.tick([gp]);window.AF_GAMEPAD.tick([]);
+     return document.querySelector('#airFrame').contentWindow.__xboxKeys;
+   }""")
+   assert all(k in keys for k in ('w','ArrowUp',' ')),"Xbox LS,RS,A missing in Air Marshalling: "+str(keys)
+   print("PASS Xbox: one Start press emits one join; Ramp left stick maps to WASD; marshalling two sticks map to individual wands and A submits.",flush=True)
+  finally:await browser.close()
+asyncio.run(main())
