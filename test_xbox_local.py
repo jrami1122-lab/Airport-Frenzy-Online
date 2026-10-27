@@ -12,7 +12,7 @@ async def main():
    await page.goto(BASE,wait_until="domcontentloaded")
    await page.locator("#gameSelect").click()
    await page.locator("#afLocalPlay").wait_for(timeout=15000)
-   await page.locator("#afPadBadge").wait_for(timeout=15000)
+   await page.locator("#afPadBadge").wait_for(state="attached",timeout=15000)
    assert await page.evaluate("!!window.AF_GAMEPAD&&!!window.AF_LOCAL")
    assert await page.locator("#afGameJump").count()==0,"Duplicate top game shortcuts still present"
    assert await page.locator("#afGameMount .gameChoice").count()==6,"Expected six clean game cards"
