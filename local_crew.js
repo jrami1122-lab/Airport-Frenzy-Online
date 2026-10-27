@@ -12,6 +12,7 @@ const num=s=>Number.parseInt(String(s||'0').replace(/[^\d-]/g,''),10)||0;
 function score(game,p=0){try{
  if(game[0]==='ramp')return +((window.__AF_RAMP_SCORES?.()||[])[p]??(p?0:num($('#score')?.textContent)))||0;
  if(game[0]==='bags')return +(window.__AF_BAG_SCORES?.()?.[p]??(p?0:window.__AF_BAG_SCORE?.()))||0;
+ if(p===1&&window.AF_DUAL?.isActive()&&window.AF_DUAL.game()===game[0])return window.AF_DUAL.score(1);
  const id=game[0]==='assist'&&p?'assistFrame2':{cabin:'cabinFrame',assist:'assistFrame',docs:'docFrame',marshal:'airFrame'}[game[0]];
  return Math.max(0,num($('#'+id)?.contentDocument?.querySelector('#score')?.textContent));
  }catch(e){return 0}}
@@ -57,7 +58,7 @@ function pauseShift(value){
  else if(!value&&pausedAt){deadline+=Date.now()-pausedAt;pausedAt=0}
  return true;
 }
-function leaveGame(){
+function leaveGame(){window.AF_DUAL?.cleanup();
  if($('#bagGame')&&!$('#bagGame').hidden)$('#bagMenu')?.click();
  else if($('#assistHost')&&!$('#assistHost').hidden)$('#assistMenu')?.click();
  else if($('#cabinHost')&&!$('#cabinHost').hidden)$('#cabinMenu')?.click();
@@ -81,10 +82,11 @@ function runTurn(){
  const s=session;if(!s)return;
  const game=s.games[s.round],people=s.players.filter(p=>p.human);
  if(s.cursor>=people.length){completeRound();return}
- const shared=people.length===2&&s.cursor===0&&!!game[4]&&!isMobile();
+ const shared=people.length===2&&s.cursor===0&&!isMobile();
  s.shared=shared;
  const player=people[s.cursor];
  if(!launch(game,shared))return resultPage('<h2>Game unavailable</h2>');
+ if(shared&&!game[4])window.AF_DUAL?.mount(game[0]);
  timer((shared?'P1 + P2':player.name)+' · '+game[1]);
 }
 function endShift(){
@@ -137,7 +139,7 @@ function setup(){
  const names=Array.from({length:humans+cpus},(_,i)=>'<div style="border-color:'+colors[i]+'"><b>'+(i<humans?'🎮 P'+(i+1):'🤖 CPU '+(i-humans+1))+'</b><small>'+(i<humans?'HUMAN':'SIMULATED AI')+'</small></div>').join('');
  $('#afLocalRoster').innerHTML=names;
  $('#afLocalNote').textContent=isMobile()?'Mobile: solo against AI only; same-device multiplayer is disabled.':
- humans===2?'Native two-player layouts run together in Ramp Runner, Bag Stacker and Terminal Assist. Other games alternate turns.':
+ humans===2?'Two humans compete simultaneously in all six games: shared Ramp Runner field and side-by-side screens for the others.':
  'Human players take separate timed turns. CPU scores are simulated, not live-playing characters.';
  $('#afLocalRoundGroup').hidden=mode!=='party';$('#afLocalGameGroup').hidden=mode!=='casual';
  $('#afLocalHeading').textContent=mode==='party'?'🏆 PARTY MODE · TOURNAMENT':'👥 LOCAL MULTIPLAYER';
