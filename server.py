@@ -323,6 +323,19 @@ async def party_js(request):
 
 async def audio_js(request):
     return web.FileResponse(ROOT / "audio_manager.js", headers={"Cache-Control": "no-store"})
+async def extra_script(request):
+    name = request.match_info.get("name", "")
+    if name not in {"dual_play.js", "release_features.js"}:
+        raise web.HTTPNotFound()
+    return web.FileResponse(ROOT / name, headers={"Cache-Control": "no-store"})
+
+async def app_asset(request):
+    name = request.match_info.get("name", "")
+    if name not in {"app-icon.svg", "manifest.webmanifest", "service-worker.js"}:
+        raise web.HTTPNotFound()
+    mime={"app-icon.svg":"image/svg+xml", "manifest.webmanifest":"application/manifest+json", "service-worker.js":"text/javascript"}[name]
+    return web.FileResponse(ROOT / name, headers={"Content-Type":mime, "Cache-Control":"no-cache"})
+
 
 async def xbox_js(request):
     return web.FileResponse(ROOT / "xbox_controller.js", headers={"Cache-Control": "no-store"})
@@ -373,6 +386,8 @@ app.router.add_get("/online_party.js", party_js)
 app.router.add_get("/audio_manager.js", audio_js)
 app.router.add_get("/xbox_controller.js", xbox_js)
 app.router.add_get("/local_crew.js", local_crew_js)
+app.router.add_get("/{name:dual_play\\.js|release_features\\.js}", extra_script)
+app.router.add_get("/{name:app-icon\\.svg|manifest\\.webmanifest|service-worker\\.js}", app_asset)
 app.router.add_get("/assets/audio/{name}.mp3", audio_file)
 app.router.add_get("/ws", websocket)
 app.on_startup.append(on_start)
